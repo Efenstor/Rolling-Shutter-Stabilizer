@@ -98,10 +98,10 @@ void evalTransform(char *inFileName, char *outFileName){
 
 	int width = capture.get(CAP_PROP_FRAME_WIDTH);
 	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
-	int fps = capture.get(CAP_PROP_FPS);
+	double fps = capture.get(CAP_PROP_FPS);
 	TRANSFORM::processedFrameCount = 0;
 
-	printf("height: %d   width: %d   fps: %d\n", height, width, fps);
+	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
 
 	time_t start = time(NULL);
 
@@ -182,9 +182,9 @@ void testPointExtraction(char *inFileName){
 
 	int width = capture.get(CAP_PROP_FRAME_WIDTH);
 	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
-	int fps = capture.get(CAP_PROP_FPS);
+	double fps = capture.get(CAP_PROP_FPS);
 
-	printf("height: %d   width: %d\n", height, width);
+	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
 
 	time_t start = time(NULL);
 
@@ -268,9 +268,9 @@ void plotCornersOnColor(char *inFileName){
 
 	int width = capture.get(CAP_PROP_FRAME_WIDTH);
 	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
-	int fps = capture.get(CAP_PROP_FPS);
+	double fps = capture.get(CAP_PROP_FPS);
 
-	printf("height: %d   width: %d\n", height, width);
+	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
 
 	time_t start = time(NULL);
 
