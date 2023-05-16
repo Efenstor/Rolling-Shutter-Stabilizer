@@ -19,7 +19,7 @@
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>  // OpenCV window I/O
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 
@@ -79,7 +79,7 @@ void JelloTransform1::CalcJelloTransform(Mat img1, Mat img2){
 	std::vector<cv::Point2f> corners2;
 	corners2.reserve(maxCorners);
 
-	CvSize pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
+	Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
 	
 	std::vector<uchar> features_found; 
 	features_found.reserve(maxCorners);

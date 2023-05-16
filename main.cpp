@@ -4,6 +4,7 @@
 #include <iomanip>  // for controlling float print precision
 #include <sstream>  // string to number conversion
 #include <time.h>
+#include <filesystem>
 
 #include "coreFuncs.h"
 #include "FullFrameTransform.h"
@@ -19,7 +20,7 @@
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>  // OpenCV window I/O
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 
@@ -78,26 +79,34 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 }
 
 template <class TRANSFORM>
-void evalTransform(){
-	CvCapture* capture = cvCreateFileCapture(INPUT_FILENAME);
+void evalTransform(char *inFileName, char *outFileName){
+	VideoCapture capture = VideoCapture(inFileName);
+	if (capture.isOpened()) {
+        printf("Opened %s\n", inFileName);
+        fflush(stdout);
+    } else {
+        printf("Could not open %s\n", inFileName);
+        return;
+    }
 
 	int numFrames;
-	numFrames = (int)cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
-	#ifdef NUM_FRAMES
+	numFrames = (int)capture.get(CAP_PROP_FRAME_COUNT);
+	#ifdef MAX_FRAMES
 		numFrames = min(numFrames, NUM_FRAMES);
 	#endif
+	printf("number of frames: %d\n", numFrames);
 
-	int width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
-	int height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
-	int fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
+	int width = capture.get(CAP_PROP_FRAME_WIDTH);
+	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
+	int fps = capture.get(CAP_PROP_FPS);
 	TRANSFORM::processedFrameCount = 0;
 
-	printf("height: %d   width: %d\n", height, width);
+	printf("height: %d   width: %d   fps: %d\n", height, width, fps);
 
 	time_t start = time(NULL);
 
 	printf("getting all frames into mat form\n");
-	vector<Mat> inputFrames = getAllInputFrames(capture, numFrames);
+	vector<Mat> inputFrames = getAllInputFrames(&capture, numFrames);
 	printf("got frames\n");
 
 	printf("making grayscale frames\n");
@@ -114,7 +123,7 @@ void evalTransform(){
 	printf("done\n");
 
 	printf("Saving output mats to file\n");
-	writeVideo(outputMats, fps, OUTPUT_FILENAME);
+	writeVideo(outputMats, fps, outFileName);
 	printf("done\n");
 
 
@@ -161,34 +170,33 @@ float getSumOfMinEigs(Mat input, vector<Point2f> corners){
 	return sum / (float) corners.size();
 }
 
-void testPointExtraction(){
+void testPointExtraction(char *inFileName){
 	finalStageCounts = new int[5];
 	memset(finalStageCounts, 0, 5*sizeof(int));
-	CvCapture* capture = cvCreateFileCapture(INPUT_FILENAME);
+	VideoCapture capture = VideoCapture(inFileName);
 
 	int numFrames;
-	numFrames = (int)cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+	numFrames = (int)capture.get(CAP_PROP_FRAME_COUNT);
 	numFrames = min(numFrames, 50);
 	//numFrames = 1;
 
-	int width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
-	int height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
-	int fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
+	int width = capture.get(CAP_PROP_FRAME_WIDTH);
+	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
+	int fps = capture.get(CAP_PROP_FPS);
 
 	printf("height: %d   width: %d\n", height, width);
 
 	time_t start = time(NULL);
 
 	printf("getting all frames into mat form\n");
-	vector<Mat> inputFrames = getAllInputFrames(capture, numFrames);
+	vector<Mat> inputFrames = getAllInputFrames(&capture, numFrames);
 	printf("got frames\n");
 
 	printf("making grayscale frames\n");
 	vector<Mat> greyInput = convertFramesToGrayscale(inputFrames);
 	printf("done\n");
 
-
-	cvNamedWindow("window", CV_WINDOW_NORMAL );
+	//namedWindow("window", WINDOW_NORMAL );
 
 	float avChiSquared = 0;
 	float avNumCorners = 0;
@@ -249,25 +257,25 @@ void chiSquaredRandomBenchmark(){
 	printf("chi squared value for %d random corners: %f\n", numCorners, chiSquared);
 }
 
-void plotCornersOnColor(){
+void plotCornersOnColor(char *inFileName){
 
-	CvCapture* capture = cvCreateFileCapture(INPUT_FILENAME);
+	VideoCapture capture = VideoCapture(inFileName);
 
 	int numFrames;
-	numFrames = (int)cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+	numFrames = (int)capture.get(CAP_PROP_FRAME_COUNT);
 	numFrames = min(numFrames, 50);
 	//numFrames = 1;
 
-	int width = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_WIDTH);
-	int height = cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_HEIGHT);
-	int fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);
+	int width = capture.get(CAP_PROP_FRAME_WIDTH);
+	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
+	int fps = capture.get(CAP_PROP_FPS);
 
 	printf("height: %d   width: %d\n", height, width);
 
 	time_t start = time(NULL);
 
 	printf("getting all frames into mat form\n");
-	vector<Mat> inputFrames = getAllInputFrames(capture, numFrames);
+	vector<Mat> inputFrames = getAllInputFrames(&capture, numFrames);
 	printf("got frames\n");
 
 	printf("making grayscale frames\n");
@@ -276,36 +284,41 @@ void plotCornersOnColor(){
 
 	printf("length: %d\n", (int)greyInput.size());
 
-	//cvNamedWindow("window", CV_WINDOW_NORMAL );
+	//namedWindow("window", WINDOW_NORMAL );
 
 	vector<Point2f> corners = extractCornersToTrack(greyInput[0]);
 	Mat img = inputFrames[0];
 	printf("1\n");
 	for(int i=0;i<(int)corners.size();i++)
-            {
-                    circle(img, corners[i], 4, Scalar(0, 0, 255));	
-                    circle(img, corners[i], 3, Scalar(0, 0, 255));
-            }
-            printf("2\n");
+	{
+			circle(img, corners[i], 4, Scalar(0, 0, 255));	
+			circle(img, corners[i], 3, Scalar(0, 0, 255));
+	}
+	printf("2\n");
 
-            imshow("window", img); 
-            imwrite("corners.jpg", img);
-            cvWaitKey(0);
-
+	imshow("window", img); 
+	imwrite("corners.jpg", img);
+	waitKey(0);
 
 }
-int main(){
+int main(int argc, char* argv[]){
 
-	//evalTransform<NullTransform>();
-	//evalTransform<FullFrameTransform>();
-	//evalTransform<FullFrameTransform2>();
-	//evalTransform<JelloTransform1>();
-	//evalTransform<JelloTransform2>();
-	//evalTransform<JelloComplex1>();
-	evalTransform<JelloComplex2>();
+    if(argc<3) {
+        const char *exec_name = std::filesystem::path(argv[0]).filename().c_str();
+        printf("Usage: %s <input_video_file> <output_video_file>\n", exec_name);
+        exit(0);
+    }
+
+	//evalTransform<NullTransform>(argv[1], argv[2]);
+	//evalTransform<FullFrameTransform>(argv[1], argv[2]);
+	//evalTransform<FullFrameTransform2>()argv[1], argv[2];
+	//evalTransform<JelloTransform1>(argv[1], argv[2]);
+	//evalTransform<JelloTransform2>(argv[1], argv[2]);
+	//evalTransform<JelloComplex1>(argv[1], argv[2]);
+	evalTransform<JelloComplex2>(argv[1], argv[2]);
 	
-	//plotCornersOnColor();
-	//testPointExtraction();
+	//plotCornersOnColor(argv[1]);
+	//testPointExtraction(argv[1]);
 	//chiSquaredRandomBenchmark();
 
 	return 0;

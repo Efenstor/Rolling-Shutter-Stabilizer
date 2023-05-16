@@ -16,7 +16,7 @@
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>  // OpenCV window I/O
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 
@@ -30,7 +30,7 @@ void GenericTransformPointAbs(AbsoluteTransformation absTrans, float x, float y,
 vector<Point2f> extractCornersToTrack(Mat img);
 vector<Point2f> extractCornersToTrack(Mat img, int numCorners);
 FeaturesInfo extractFeaturesToTrack(Mat img);
-vector<Mat> getAllInputFrames(CvCapture* capture, int numFrames);
+vector<Mat> getAllInputFrames(VideoCapture* capture, int numFrames);
 Mat matToGrayscale(Mat m);
 vector<Mat> convertFramesToGrayscale(vector<Mat> input);
 void writeVideo(vector<Mat> frames, int fps, string filename);

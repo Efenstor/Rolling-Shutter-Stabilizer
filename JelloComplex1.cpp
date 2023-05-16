@@ -12,14 +12,14 @@
 #include "structures.h"
 #include "settings.h"
 #include "coreFuncs.h"
-#include "jelloComplex1.h"
+#include "JelloComplex1.h"
 #include "nullTransform.h"
 
 #include <opencv2/imgproc/imgproc.hpp>  // Gaussian Blur
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>  // OpenCV window I/O
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 

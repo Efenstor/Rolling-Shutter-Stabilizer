@@ -14,7 +14,7 @@
 #include <opencv2/core/core.hpp>        // Basic OpenCV structures (cv::Mat, Scalar)
 #include <opencv2/highgui/highgui.hpp>  // OpenCV window I/O
 #include <opencv2/features2d/features2d.hpp>
-#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/features2d.hpp>
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 
@@ -243,7 +243,7 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners){
                     circle(img, corners[i], 2, Scalar(255, 0, 0));	
             }
             imshow("Window1", img); 
-            cvWaitKey(10000);
+            waitKey(10000);
             
         }
 	return corners;
@@ -262,15 +262,19 @@ FeaturesInfo extractFeaturesToTrack(Mat img){
 	return fi;
 }
 
-vector<Mat> getAllInputFrames(CvCapture* capture, int numFrames){
+vector<Mat> getAllInputFrames(VideoCapture* capture, int numFrames){
     vector<Mat> result;
     
-    cvSetCaptureProperty(capture,CV_CAP_PROP_POS_FRAMES,0);
+    capture->set(CAP_PROP_POS_FRAMES,0);
 	
     for(int i=0;i<numFrames;i++)
     {
-		Mat m(cvCloneImage(cvQueryFrame(capture)));
-		result.push_back(m);
+        Mat m;
+        if ( capture->read(m) == false) {
+            printf("cannot get frame %d, skipping\n", i);
+        } else {
+            result.push_back(m);
+        }
     }
     
     return result;
@@ -292,8 +296,6 @@ vector<Mat> convertFramesToGrayscale(vector<Mat> input){
 }
 
 void writeVideo(vector<Mat> frames, int fps, string filename){
-	int codec = CV_FOURCC('M', 'J', 'P', 'G');
-
 	int width = frames[0].cols;
 	int height = frames[0].rows;
 	
@@ -305,13 +307,13 @@ void writeVideo(vector<Mat> frames, int fps, string filename){
 	Size size(width, height);
 	#endif
 
-	outputVideo.open(filename, codec, fps, size, true);
+	outputVideo.open(filename, VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, size, true);
 	if(!outputVideo.isOpened()){
 		printf("output video failed to open\n");
 		exit(1);
 	}
 
-	cvNamedWindow("window", CV_WINDOW_NORMAL );
+	//namedWindow("window", WINDOW_NORMAL );
 
 	for(int i=0;i<(int)frames.size();i++){
 
@@ -342,7 +344,7 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
 	corners1.reserve(maxCorners); 
 	corners2.reserve(maxCorners);
 
-	CvSize pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
+	Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
 	
 	std::vector<uchar> features_found; 
 	features_found.reserve(maxCorners);
