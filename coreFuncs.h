@@ -33,7 +33,7 @@ FeaturesInfo extractFeaturesToTrack(Mat img);
 vector<Mat> getAllInputFrames(VideoCapture* capture, int numFrames);
 Mat matToGrayscale(Mat m);
 vector<Mat> convertFramesToGrayscale(vector<Mat> input);
-void writeVideo(vector<Mat> frames, int fps, string filename);
+void writeVideo(vector<Mat> frames, float fps, string filename);
 int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point2f> &corners2);
 vector<Point2f> extractCornersToTrackColor(Mat img);
 vector<Point2f> extractCornersRecursive(Mat img);

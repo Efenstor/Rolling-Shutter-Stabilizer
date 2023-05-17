@@ -295,7 +295,7 @@ vector<Mat> convertFramesToGrayscale(vector<Mat> input){
 	return result;
 }
 
-void writeVideo(vector<Mat> frames, int fps, string filename){
+void writeVideo(vector<Mat> frames, float fps, string filename){
 	int width = frames[0].cols;
 	int height = frames[0].rows;
 	
@@ -310,7 +310,7 @@ void writeVideo(vector<Mat> frames, int fps, string filename){
 	outputVideo.open(filename, VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, size, true);
 	if(!outputVideo.isOpened()){
 		printf("output video failed to open\n");
-		exit(1);
+		exit(2);
 	}
 
 	//namedWindow("window", WINDOW_NORMAL );
