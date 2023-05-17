@@ -24,8 +24,10 @@
 #include "opencv2/imgproc/imgproc_c.h"
 
 JelloTransform1::JelloTransform1(){
-	wholeFrameTransform = (Transformation){0, 0, 0, 0, 0, 1, 0};	//cos term is 1
-	absoluteWholeFrameTransform = (AbsoluteTransformation){wholeFrameTransform, 0, 0};
+	Transformation tr = {0, 0, 0, 0, 0, 1, 0};	//cos term is 1
+	wholeFrameTransform = tr;
+	AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
+	absoluteWholeFrameTransform = at;
 
 	AllocateShiftMem();
 }
@@ -90,7 +92,7 @@ void JelloTransform1::CalcJelloTransform(Mat img1, Mat img2){
 		Size( win_size, win_size ), 5,
 		 cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3 ), 0 );
 	
-	#ifdef SHFITS_FILENAME || 1
+	#ifdef SHFITS_FILENAME
 		char outputFilename[100];
 		sprintf(outputFilename, "data/pts%d.txt", (int)frameErrors.size());
 		FILE* fp = fopen(outputFilename, "w");

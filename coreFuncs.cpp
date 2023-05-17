@@ -63,7 +63,7 @@ vector<Point2f> extractCornersToTrackColor(Mat img){
 	*/
 
 	int startLength = (int)result.size();
-	for(int i=0;i<addition.size();i++){
+	for(int i=0;i<(int)addition.size();i++){
 		bool usePoint = true;
 		for(int j=0;j<startLength;j++){
 			if(norm(addition[i] - result[j]) < 3.0){
@@ -78,7 +78,7 @@ vector<Point2f> extractCornersToTrackColor(Mat img){
 	}
 
 	startLength = (int)result.size();
-	for(int i=0;i<addition2.size();i++){
+	for(int i=0;i<(int)addition2.size();i++){
 		bool usePoint = true;
 		for(int j=0;j<startLength;j++){
 			if(norm(addition2[i] - result[j]) < 3.0){
@@ -119,7 +119,7 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 	int halfWidth = img.cols/2;
 	int minCount = result.size() / 10;	//min of 10% in each quarter
 
-	for(int i=0;i<result.size();i++){
+	for(int i=0;i<(int)result.size();i++){
 		int index = 0;
 		if(result[i].y > halfHeight)
 			index++;
@@ -176,7 +176,7 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 		}
 	}
 
-	for(int i=0;i<result.size();i++){
+	for(int i=0;i<(int)result.size();i++){
 		result[i] += offset;
 	}
 
@@ -344,7 +344,7 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
 	corners1.reserve(maxCorners); 
 	corners2.reserve(maxCorners);
 
-	Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
+	//Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
 	
 	std::vector<uchar> features_found; 
 	features_found.reserve(maxCorners);

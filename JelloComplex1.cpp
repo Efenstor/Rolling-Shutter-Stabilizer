@@ -63,7 +63,8 @@ JelloComplex1::JelloComplex1(){
 }
 
 JelloComplex1::JelloComplex1(Mat img1, Mat img2, int index0, int index1){
-	frameBound = (imgBound){0, img1.cols, 0, img1.rows};
+	imgBound ib = {0, img1.cols, 0, img1.rows};
+	frameBound = ib;
 	centerX = img1.cols / 2.0;
 
 	CalcJelloTransform(img1, img2);
@@ -1313,7 +1314,7 @@ void JelloComplex1::GetSineEstimatesWeighted(vector<float> ys, vector<float> dif
 	for(int i=0;i<F_STEPS;i++){
 		float freq = F_LOW + (F_HIGH-F_LOW) * i / (F_STEPS-1);
 		float sinSum = 0, cosSum = 0;
-		for(int j=0;j<ys.size();j++){
+		for(int j=0;j<(int)ys.size();j++){
 			sinSum += sin(ys[j] * freq) * diffs[j] * weights[j];
 			cosSum += cos(ys[j] * freq) * diffs[j] * weights[j];
 		}
@@ -1329,7 +1330,7 @@ void JelloComplex1::GetSineEstimatesWeighted(vector<float> ys, vector<float> dif
 	}
 
 	float weightsSquaredSum = 0;
-	for(int i=0;i<weights.size();i++) weightsSquaredSum += weights[i] * weights[i];
+	for(int i=0;i<(int)weights.size();i++) weightsSquaredSum += weights[i] * weights[i];
 
 	float amplitude = 2 * sqrt(bestTotal) / weightsSquaredSum;
 	float phase = atan2(bestCos, bestSin);

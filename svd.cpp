@@ -71,7 +71,8 @@ Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, i
 
     if(weightsSum == 0){
         printf("weights sum is 0\n");
-        return (Transformation){0, 0, 0, 0, 0, 1, 0};
+        Transformation tr = {0, 0, 0, 0, 0, 1, 0};
+        return tr;
     }
     
     mean1x /= weightsSum;
@@ -202,7 +203,7 @@ set<int> randomPointSample(vector<Point2f> corners1, vector<Point2f> corners2, v
         return indexes;
     }
 
-    while (indexes.size() < sampleLength)
+    while ((int)indexes.size() < sampleLength)
     {
         int random_index = rand() % inputLength;
         if (indexes.find(random_index) == indexes.end())
@@ -234,7 +235,8 @@ Transformation RansacNonWeightedSvd(vector<Point2f> corners1, vector<Point2f> co
 
         set<int> indeces = randomPointSample(corners1, corners2, sample1, sample2, length, pointsPerIteration);
         if(indeces.size() == 0){
-            return (Transformation){0, 0, 0, 0, 0, 1, 0};   //empty transformation
+			Transformation tr = {0, 0, 0, 0, 0, 1, 0};
+            return tr;   //empty transformation
         }
 
         Transformation model = nonWeightedSvd(sample1, sample2, pointsPerIteration);
@@ -252,7 +254,7 @@ Transformation RansacNonWeightedSvd(vector<Point2f> corners1, vector<Point2f> co
         }
 
         //printf("inliers: %d\n", (int)sample1.size());
-        if(sample1.size() > mostInliers){
+        if((int)sample1.size() > mostInliers){
             bestModel = nonWeightedSvd(sample1, sample2, (int)sample1.size());
             mostInliers = sample1.size();
 

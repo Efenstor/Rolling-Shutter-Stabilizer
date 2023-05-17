@@ -26,7 +26,8 @@ NullTransform::NullTransform(){
 
 
 NullTransform::NullTransform(Mat img1, Mat img2, int index0, int index1){
-	frameBound = (imgBound){0, img1.cols, 0, img1.rows};
+	imgBound ib = {0, img1.cols, 0, img1.rows};
+	frameBound = ib;
 
 /*
 	vector<Point2f> corners1, corners2;

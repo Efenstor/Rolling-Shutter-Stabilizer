@@ -31,7 +31,8 @@ FullFrameTransform2::FullFrameTransform2(){
 FullFrameTransform2::FullFrameTransform2(Mat img1, Mat img2, int index0, int index1, bool evalShifts){
 	AllocateShiftMem();
 	getWholeFrameTransform(img1, img2);
-	frameBound = (imgBound){0, img1.cols, 0, img1.rows};
+	imgBound ib = {0, img1.cols, 0, img1.rows};
+	frameBound = ib;
 
 	#ifdef SHFITS_FILENAME
 		if(evalShifts){

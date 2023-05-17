@@ -22,14 +22,18 @@
 
 
 FullFrameTransform::FullFrameTransform(){
-	wholeFrameTransform = (Transformation){0, 0, 0, 0, 0, 1, 0};	//cos term is 1
-	absoluteWholeFrameTransform = (AbsoluteTransformation){wholeFrameTransform, 0, 0};
+	Transformation tr = {0, 0, 0, 0, 0, 1, 0};	//cos term is 1
+	wholeFrameTransform = tr;
+	AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
+	absoluteWholeFrameTransform = at;
 }
 
 FullFrameTransform::FullFrameTransform(Mat img1, Mat img2, int index0, int index1, bool evalShifts){
 	getWholeFrameTransform(img1, img2);
-	absoluteWholeFrameTransform = (AbsoluteTransformation){wholeFrameTransform, 0, 0};
-	frameBound = (imgBound){0, img1.cols, 0, img1.rows};
+	AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
+	absoluteWholeFrameTransform = at;
+	imgBound ib = {0, img1.cols, 0, img1.rows};
+	frameBound = ib;
 
 	#ifdef SHFITS_FILENAME
 		if(evalShifts){

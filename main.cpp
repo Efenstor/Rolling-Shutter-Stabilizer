@@ -5,6 +5,7 @@
 #include <sstream>  // string to number conversion
 #include <time.h>
 #include <filesystem>
+#include <unistd.h>
 
 #include "coreFuncs.h"
 #include "FullFrameTransform.h"
@@ -140,7 +141,7 @@ float chiSquaredRandomnessTest(vector<Point2f> corners, int height, int width){
 	int *counts = new int[countsLength];
 	memset(counts, 0, countsLength*sizeof(int));
 
-	for(int i=0;i<corners.size();i++){
+	for(int i=0;i<(int)corners.size();i++){
 		int x = (int)(corners[i].x/width*numDivisionsX);
 		int y = (int)(corners[i].y/height*numDivisionsY);
 		counts[y*numDivisionsY+x] ++;
@@ -160,7 +161,7 @@ float getSumOfMinEigs(Mat input, vector<Point2f> corners){
 	Mat minEigs(input.rows, input.cols, CV_32FC1);
 	cornerMinEigenVal(input, minEigs, 3);
 	float sum = 0;
-	for(int i=0;i<corners.size();i++){
+	for(int i=0;i<(int)corners.size();i++){
 		int x = (int)corners[i].x;
 		int y = (int)corners[i].y;
 		float eig = ((float*)(minEigs.data))[ y*minEigs.step1()+ x*minEigs.channels()];
@@ -186,7 +187,7 @@ void testPointExtraction(char *inFileName){
 
 	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
 
-	time_t start = time(NULL);
+	//time_t start = time(NULL);
 
 	printf("getting all frames into mat form\n");
 	vector<Mat> inputFrames = getAllInputFrames(&capture, numFrames);
@@ -220,7 +221,7 @@ void testPointExtraction(char *inFileName){
 		avMinEig += sumOfEigs;
 		
 		Mat out = inputFrames[i];
-		for(int i=0;i<corners1.size();i++){
+		for(int i=0;i<(int)corners1.size();i++){
 			circle(out, corners1[i], 4, Scalar(0, 0, 255));
 			circle(out, corners1[i], 3, Scalar(0, 0, 255));
 		}
@@ -272,7 +273,7 @@ void plotCornersOnColor(char *inFileName){
 
 	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
 
-	time_t start = time(NULL);
+	//time_t start = time(NULL);
 
 	printf("getting all frames into mat form\n");
 	vector<Mat> inputFrames = getAllInputFrames(&capture, numFrames);
@@ -303,22 +304,48 @@ void plotCornersOnColor(char *inFileName){
 }
 int main(int argc, char* argv[]){
 
-    if(argc<3) {
-        const char *exec_name = std::filesystem::path(argv[0]).filename().c_str();
-        printf("Usage: %s <input_video_file> <output_video_file>\n", exec_name);
-        exit(0);
-    }
+	int pass = 0;
 
-	//evalTransform<NullTransform>(argv[1], argv[2]);
-	//evalTransform<FullFrameTransform>(argv[1], argv[2]);
-	//evalTransform<FullFrameTransform2>()argv[1], argv[2];
-	//evalTransform<JelloTransform1>(argv[1], argv[2]);
-	//evalTransform<JelloTransform2>(argv[1], argv[2]);
-	//evalTransform<JelloComplex1>(argv[1], argv[2]);
-	evalTransform<JelloComplex2>(argv[1], argv[2]);
+	int opt;
+	while((opt = getopt(argc, argv, "p:")) != -1)
+	{
+		//printf("opt: %c   optopt: %c   optarg: %s\n", (char)opt, (char)optopt, optarg);
+		switch (opt)
+		{
+		case 'p':
+			if (strcmp(optarg, "1") && strcmp(optarg, "2")) {
+				printf("Please specify pass, either 1 or 2\n");
+				return 1;
+			}
+			pass = atoi(optarg);
+			break;
+		}
+	}
+
+	// Help
+    if((argc-optind) < 2) {
+        const char *exec_name = std::filesystem::path(argv[0]).filename().c_str();
+        printf("Usage: %s [options] <input_video_file> <output_video_file>\n", exec_name);
+        //printf("Options:\n");
+        //printf("  -p <pass>: Perform only selected pass. Can be either 1 or 2.\n");
+        return 1;
+    }
+    
+    // Ordered parameters
+    char *inFileName = argv[optind];
+    char *outFileName = argv[optind+1];
+
+	// Do processing
+	//evalTransform<NullTransform>(inFileName, outFileName);
+	//evalTransform<FullFrameTransform>(inFileName, outFileName);
+	//evalTransform<FullFrameTransform2>(inFileName, outFileName);
+	//evalTransform<JelloTransform1>(inFileName, outFileName);
+	//evalTransform<JelloTransform2>(inFileName, outFileName);
+	//evalTransform<JelloComplex1>(inFileName, outFileName);
+	evalTransform<JelloComplex2>(inFileName, outFileName);
 	
-	//plotCornersOnColor(argv[1]);
-	//testPointExtraction(argv[1]);
+	//plotCornersOnColor(inFileName);
+	//testPointExtraction(inFileName);
 	//chiSquaredRandomBenchmark();
 
 	return 0;

@@ -28,7 +28,8 @@ JelloTransform2::JelloTransform2(){
 }
 
 JelloTransform2::JelloTransform2(Mat img1, Mat img2, int index0, int index1){
-	frameBound = (imgBound){0, img1.cols, 0, img1.rows};
+	imgBound ib = {0, img1.cols, 0, img1.rows};
+	frameBound = ib;
 
 	CalcJelloTransform(img1, img2);
 
