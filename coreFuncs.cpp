@@ -316,8 +316,9 @@ void writeVideo(vector<Mat> frames, float fps, string filename){
 	//namedWindow("window", WINDOW_NORMAL );
 
 	for(int i=0;i<(int)frames.size();i++){
-
-		printf("\b\b\b\b\b\b\b\b\b\b\b\b\b%d/%d", i, (int) frames.size());
+		
+		for(int bs=0; bs<20; bs++) { printf("\b"); }
+		printf("%d/%d", i, (int) frames.size());
 		fflush(stdout);
 		
 		Mat frame = frames[i];
@@ -328,6 +329,7 @@ void writeVideo(vector<Mat> frames, float fps, string filename){
 		outputVideo.write(frame);
 		#endif
 	}
+	printf("\n");
 }
 
 int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point2f> &corners2){

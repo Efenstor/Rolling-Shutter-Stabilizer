@@ -176,7 +176,7 @@ void JelloComplex2::CalculateModelParameters(vector<Point2f> corners1, vector<Po
 
 		EXTRACT_PARAMS(params)
 		float x2Pred = dx0 + dx1*y + x*cos(r0 + r1*y) - y*sin(r0 + r1*y);
-		float y2Pred = dy0 + dy1*y  + x*sin(r0 + r1*y) + y*cos(r0 + r1*y);
+		float y2Pred = dy0 + dy1*y + x*sin(r0 + r1*y) + y*cos(r0 + r1*y);
 		
 		float d = (x2-x2Pred) * (x2-x2Pred) + (y2 - y2Pred) * (y2-y2Pred);
 		float w = exp(-d/(SINE_MODEL_WEIGHTING_W*SINE_MODEL_WEIGHTING_W));
@@ -1529,7 +1529,10 @@ void JelloComplex2::getUpdate(arma::Mat<float> jacob, arma::Col<float> fVector, 
 	}
 
 	try{
-		update = arma::solve(jacob, fVector);
+		auto oldStreambuf = std::cerr.rdbuf();
+		if(!gWarnings) std::cerr.rdbuf(nullptr);   // Suppress errors
+		update = arma::solve(jacob, fVector, arma::solve_opts::equilibrate + arma::solve_opts::allow_ugly);
+		std::cerr.rdbuf(oldStreambuf);   // Restore errors
 	} catch (const runtime_error& error){
 	   	printf("solve() threw a runtime error\n");
 	   	printf("jacobian:\n");

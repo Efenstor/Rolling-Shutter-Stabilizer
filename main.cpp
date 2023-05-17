@@ -28,6 +28,7 @@
 using namespace std;
 using namespace cv;
 
+bool gWarnings = false;
 
 template <class TRANSFORM>
 vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
@@ -41,7 +42,8 @@ vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
 	result.push_back(nullTrans);
 	
 	for(int i=0;i<(int)(greyInput.size()-1);i++){
-		printf("\b\b\b\b\b\b\b\b\b%d/%d", i, (int)(greyInput.size()-1));
+		for(int bs=0; bs<20; bs++) { printf("\b"); }
+		printf("%d/%d", i, (int)(greyInput.size()-1));
 		fflush(stdout);
 
 		TRANSFORM t(greyInput[i], greyInput[i+1], i, i+1);
@@ -50,6 +52,7 @@ vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
 		//printf("%f\n", t.shiftsX[100][100]);
 		result.push_back(t);
 	}
+	printf("\n");
 
 	return result;
 }
@@ -60,12 +63,14 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 
 	//transform mats
 	for(int i=0;i<(int)input.size();i++){
-		printf("\b\b\b\b\b\b\b\b\b\b%d/%d", i, (int)input.size());
+		for(int bs=0; bs<20; bs++) { printf("\b"); }
+		printf("%d/%d", i, (int)input.size());
 		fflush(stdout);
 
 		Mat out = transforms[i].TransformImage(input[i]);
 		result.push_back(out);
 	}
+	printf("\n");
 
 	//crop mats
 	imgBound bound = transforms[0].frameBound;
@@ -307,11 +312,14 @@ int main(int argc, char* argv[]){
 	int pass = 0;
 
 	int opt;
-	while((opt = getopt(argc, argv, "p:")) != -1)
+	while((opt = getopt(argc, argv, "wp:")) != -1)
 	{
 		//printf("opt: %c   optopt: %c   optarg: %s\n", (char)opt, (char)optopt, optarg);
 		switch (opt)
 		{
+		case 'w':
+			gWarnings = true;
+			break;
 		case 'p':
 			if (strcmp(optarg, "1") && strcmp(optarg, "2")) {
 				printf("Please specify pass, either 1 or 2\n");
@@ -326,8 +334,9 @@ int main(int argc, char* argv[]){
     if((argc-optind) < 2) {
         const char *exec_name = std::filesystem::path(argv[0]).filename().c_str();
         printf("Usage: %s [options] <input_video_file> <output_video_file>\n", exec_name);
-        //printf("Options:\n");
+        printf("Options:\n");
         //printf("  -p <pass>: Perform only selected pass. Can be either 1 or 2.\n");
+        printf("  -w: Print all warnings/errors.\n");
         return 1;
     }
     

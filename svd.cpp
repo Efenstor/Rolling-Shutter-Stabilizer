@@ -10,6 +10,7 @@
 
 #include <math.h>
 #include <set>
+
 #include <armadillo>
 
 using namespace std;
