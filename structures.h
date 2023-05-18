@@ -98,9 +98,6 @@ typedef struct
     float y2;
 } PointShift;
 
-#define ARGS_NUM 4
-#define ARGS_MIN 2
-
 typedef struct
 {
   char *inFileName, *outFileName;
