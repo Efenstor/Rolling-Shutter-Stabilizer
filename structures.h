@@ -12,12 +12,14 @@
 using namespace cv;
 using namespace std;
 
-typedef struct{
+typedef struct
+{
 	vector<Point2f> features;
 	vector<Mat> pyramid;
 } FeaturesInfo;
 
-typedef struct{
+typedef struct
+{
     float ux1;
     float uy1;
     float ux2;
@@ -72,13 +74,15 @@ public:
     }
 };*/
 
-typedef struct{
+typedef struct
+{
     Transformation trans;
     float idx;
     float idy;
 } AbsoluteTransformation;
 
-typedef struct{
+typedef struct
+{
 	int minX;
 	int maxX;
 	int minY;
@@ -86,11 +90,22 @@ typedef struct{
 } imgBound;
 
 
-typedef struct{
+typedef struct
+{
     float x1;
     float y1;
     float x2;
     float y2;
 } PointShift;
+
+#define ARGS_NUM 4
+#define ARGS_MIN 2
+
+typedef struct
+{
+  char *inFileName, *outFileName;
+  int pass, method;
+  bool warnings;
+} arguments;
 
 #endif

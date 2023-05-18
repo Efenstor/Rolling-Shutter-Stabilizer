@@ -26,6 +26,8 @@
 
 #include <armadillo>
 
+extern arguments args;
+
 #define FLOAT_TYPE 		float
 #define NUM_FREQUENCIES 	2
 
@@ -1530,7 +1532,7 @@ void JelloComplex2::getUpdate(arma::Mat<float> jacob, arma::Col<float> fVector, 
 
 	try{
 		auto oldStreambuf = std::cerr.rdbuf();
-		if(!gWarnings) std::cerr.rdbuf(nullptr);   // Suppress errors
+		if(!args.warnings) std::cerr.rdbuf(nullptr);   // Suppress errors
 		update = arma::solve(jacob, fVector, arma::solve_opts::equilibrate + arma::solve_opts::allow_ugly);
 		std::cerr.rdbuf(oldStreambuf);   // Restore errors
 	} catch (const runtime_error& error){

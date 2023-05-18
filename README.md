@@ -3,9 +3,7 @@ Rolling-Shutter-Video-Stabilization
 
 ### Summary:
 
-A Linux command line program for stabilizing shaky video clips. Very effectively eliminates the infamous "jello" effect caused by CMOS sensors. Although not very fast, does not require GPU.
-
-**Memory overflow warning:** Currently video is processed in memory in uncompressed form, so be sure to have lots of RAM and avoid processing long clips.
+A Linux command line program for stabilizing shaky video clips. Very effectively eliminates the infamous "jello" effect caused by CMOS sensors. Currently all calculations are done by CPU, so don't expect much performance.
 
 ### Licensing problem:
 

@@ -6,6 +6,7 @@
 #include <time.h>
 #include <filesystem>
 #include <unistd.h>
+#include <argp.h>
 
 #include "coreFuncs.h"
 #include "FullFrameTransform.h"
@@ -25,10 +26,12 @@
 #include <opencv2/video/tracking.hpp>
 #include "opencv2/imgproc/imgproc_c.h"
 
+#define VERSION "0.5"
+
 using namespace std;
 using namespace cv;
 
-bool gWarnings = false;
+arguments args;
 
 template <class TRANSFORM>
 vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
@@ -85,7 +88,7 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 }
 
 template <class TRANSFORM>
-void evalTransform(char *inFileName, char *outFileName){
+void evalTransform(char *inFileName, char *outFileName, int pass){
 	VideoCapture capture = VideoCapture(inFileName);
 	if (capture.isOpened()) {
         printf("Opened %s\n", inFileName);
@@ -307,55 +310,174 @@ void plotCornersOnColor(char *inFileName){
 	waitKey(0);
 
 }
-int main(int argc, char* argv[]){
 
-	int pass = 0;
-
-	int opt;
-	while((opt = getopt(argc, argv, "wp:")) != -1)
+int checkNumberArg(char *optarg, double min, double max, bool fp)
+{
+	int i;
+	bool point = false;
+	
+	// Is it a number?
+	for(i=0; i<(int)strlen(optarg); i++)
 	{
-		//printf("opt: %c   optopt: %c   optarg: %s\n", (char)opt, (char)optopt, optarg);
-		switch (opt)
-		{
-		case 'w':
-			gWarnings = true;
-			break;
-		case 'p':
-			if (strcmp(optarg, "1") && strcmp(optarg, "2")) {
-				printf("Please specify pass, either 1 or 2\n");
+		if(fp) {
+			// Must be floating point
+			if(optarg[i]<'0' || optarg[i]>'9' || (optarg[i]!='.' && optarg[i]!=',')) {
 				return 1;
+			} else {
+				// Only one point is allowed
+				if(point && (optarg[i]=='.' || optarg[i]==',')) return 3;
+				else point = true;
 			}
-			pass = atoi(optarg);
-			break;
+		} else {
+			// Must be integer
+			if(optarg[i]<'0' || optarg[i]>'9') return 1;
 		}
 	}
 
-	// Help
-    if((argc-optind) < 2) {
-        const char *exec_name = std::filesystem::path(argv[0]).filename().c_str();
-        printf("Usage: %s [options] <input_video_file> <output_video_file>\n", exec_name);
-        printf("Options:\n");
-        //printf("  -p <pass>: Perform only selected pass. Can be either 1 or 2.\n");
-        printf("  -w: Print all warnings/errors.\n");
-        return 1;
+	// Is it in range?
+	double val=atof(optarg);
+	if(val<min || val>max) return 2;
+	
+	return 0;
+}
+
+const char *argp_program_version = VERSION;
+const char *argp_program_bug_address = "https://github.com/Efenstor/Rolling-Shutter-Video-Stabilization/issues";
+
+static char doc[] = "\nRolling Shutter Video Stabilization v" VERSION "\n"
+"Algorithms and the OpenCV implementation (C) 2014 Nick Stupich.\n\n"
+"All processing is done in two passes, the results of the first pass are saved\n"
+"into a <input_file>.pass1 file created in the same directory. To tweak\n"
+"processing parameters you can skip the first pass if you already did it once.";
+
+static char args_doc[] = "-i <input_file> -o <output_file>";
+
+static struct argp_option options[] = {
+	{0, 'h', 0, OPTION_HIDDEN, 0, 0},
+	{0, '?', 0, OPTION_HIDDEN, 0, 0},
+	{"input", 'i', "file_name", 0, "Input video file", 0},
+	{"output", 'o', "file_name", 0, "Output video file", 0},
+	{"pass", 'p', "1 or 2", 0, "Do only selected processing pass", 0},
+	{"method", 500, "1..7", 0, "Processing method (see the list below)", 1},
+	{"warnings", 501, 0, 0, "Show all warnings/errors", 2},
+	{0, 0, 0, OPTION_DOC, "Processing methods:\n"
+		"1 = JelloComplex2 (default, best)\n"
+		"2 = JelloComplex1\n"
+		"3 = JelloTransform2\n"
+		"4 = JelloTransform1\n"
+		"5 = FullFrameTransform2 (for debug use)\n"
+		"6 = FullFrameTransform (for debug use)\n"
+		"7 = NullTransform (for debug use)", 0},
+	{0, 0, 0, 0, 0, 0}
+};
+
+static error_t parse_opt (int key, char *arg, struct argp_state *state)
+{
+	arguments *args = (arguments*)state->input;
+	
+	switch (key)
+    {
+		case 'i':
+			// Input file name
+			args->inFileName = arg;
+			break;
+			
+		case 'o':
+			// Output file name
+			args->outFileName = arg;
+			break;
+			
+		case 'p':
+			// Pass
+			if(checkNumberArg(arg, 1, 2, false)) {
+				printf("Pass should be either 1 or 2.\n");
+				exit(1);
+			}
+			args->pass = atoi(arg);
+			break;
+			
+		case 500:
+			// Method
+			if(checkNumberArg(arg, 1, 7, false)) {
+				printf("Method should be a number from 1 to 7.\n");
+				exit(1);
+			}
+			args->method = atoi(arg);
+			break;
+			
+		case 501:
+			// Show warnings
+			args->warnings = true;
+			break;
+		
+		case 'h':
+		case '?':
+			// Show full help
+			argp_state_help(state, state->out_stream, ARGP_HELP_STD_HELP);
+			break;
+
+		case ARGP_KEY_SUCCESS:
+			if(!args->inFileName || !args->outFileName) {
+				// Mandatory parameters are not specified
+				printf("Please specify both the input (-i) and output (-o) file name.\n");
+				exit(1);
+			}
+			break;
+
+		case ARGP_KEY_NO_ARGS:
+			if(state->argc < 2)
+			{
+				// No arguments, show usage help
+				argp_usage(state);
+			}
+			break;
+
+		case ARGP_KEY_ARG:
+			if (state->arg_num > 1)
+			{
+				// More than one argument, show usage help
+				argp_usage(state);
+			}
+			break;
+			
+		default:
+			return ARGP_ERR_UNKNOWN;
     }
-    
-    // Ordered parameters
-    char *inFileName = argv[optind];
-    char *outFileName = argv[optind+1];
+	return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
+int main(int argc, char* argv[]){
+
+	// Defaults
+	args.inFileName = NULL;
+	args.outFileName = NULL;
+	args.pass = 0;
+	args.method = 1;
+	args.warnings = false;
+
+	// Parse arguments
+	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;
 
 	// Do processing
-	//evalTransform<NullTransform>(inFileName, outFileName);
-	//evalTransform<FullFrameTransform>(inFileName, outFileName);
-	//evalTransform<FullFrameTransform2>(inFileName, outFileName);
-	//evalTransform<JelloTransform1>(inFileName, outFileName);
-	//evalTransform<JelloTransform2>(inFileName, outFileName);
-	//evalTransform<JelloComplex1>(inFileName, outFileName);
-	evalTransform<JelloComplex2>(inFileName, outFileName);
+	switch(args.method)
+	{
+		case 1: evalTransform<JelloComplex2>(args.inFileName, args.outFileName, args.pass); break;
+		case 2: evalTransform<JelloComplex1>(args.inFileName, args.outFileName, args.pass); break;
+		case 3: evalTransform<JelloTransform2>(args.inFileName, args.outFileName, args.pass); break;
+		case 4: evalTransform<JelloTransform1>(args.inFileName, args.outFileName, args.pass); break;
+		case 5: evalTransform<FullFrameTransform2>(args.inFileName, args.outFileName, args.pass); break;
+		case 6: evalTransform<FullFrameTransform>(args.inFileName, args.outFileName, args.pass); break;
+		case 7: evalTransform<NullTransform>(args.inFileName, args.outFileName, args.pass); break;
+	}
 	
-	//plotCornersOnColor(inFileName);
-	//testPointExtraction(inFileName);
-	//chiSquaredRandomBenchmark();
+	/*switch(args.debugOpt)
+	{
+		case 1: plotCornersOnColor(args.inFileName); break;
+	    case 2: testPointExtraction(args.inFileName); break;
+		case 3: chiSquaredRandomBenchmark(); break;
+	}*/
 
 	return 0;
 }
