@@ -8,6 +8,7 @@
 #include <numeric>
 #include <math.h>
 #include <sys/time.h>
+#include <thread>
 
 #include "svd.h"
 #include "structures.h"
@@ -1903,9 +1904,12 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	//printf("elapsed ms: %d\n", (int)elapsedMs);
 }
 
-void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform){
-	for(int row=0;row<imgHeight;row++){
-		for(int col=0;col<imgWidth;col++){
+void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams params)
+{
+	for(int row=params.from;row<=params.to;row++)
+	{
+		for(int col=0;col<imgWidth;col++)
+		{
 			float x2, y2;
 			
 			float x = col + prevTransform.shiftsX[row][col];
@@ -1915,6 +1919,38 @@ void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform){
 			shiftsX[row][col] = prevTransform.shiftsX[row][col] * JELLO_DECAY - x2 + x;
 			shiftsY[row][col] = prevTransform.shiftsY[row][col] * JELLO_DECAY - y2 + y;
 		}
+	}
+}
+
+void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
+{
+	std::vector<threadParams> params;
+
+	// Prepare threads
+	double rowsPerThread = imgHeight/args.threads;
+	for(int t=0; t<args.threads; t++)
+	{
+		threadParams tp;
+		
+		tp.from = lround(t*rowsPerThread);
+		if(t<args.threads-1) tp.to = lround((t+1)*rowsPerThread-1);
+		else tp.to = imgHeight-1;
+		
+		params.push_back(tp);
+	}
+	
+	// Create threads
+	std::vector<std::thread> threads;
+	for(int t=0; t<args.threads; t++)
+	{
+		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevTransform, params.at(t));
+		threads.push_back(move(newThr));
+	}
+	
+	// Join threads
+	for(int t=0; t<args.threads; t++)
+	{
+		threads.at(t).join();
 	}
 }
 

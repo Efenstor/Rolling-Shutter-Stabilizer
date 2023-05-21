@@ -21,4 +21,6 @@
 
 #define REMOVE_GAUSSIAN_WEIGHT_TAILS	0   //0
 
+#define FPS_AFTER						5	// Seconds
+
 #endif

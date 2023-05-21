@@ -5,6 +5,7 @@
 #include <sstream>  // string to number conversion
 #include <time.h>
 #include <filesystem>
+#include <thread>
 #include <unistd.h>
 #include <argp.h>
 
@@ -43,17 +44,33 @@ vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
 	TRANSFORM nullTrans;
 
 	result.push_back(nullTrans);
-	
-	for(int i=0;i<(int)(greyInput.size()-1);i++){
-		for(int bs=0; bs<20; bs++) { printf("\b"); }
-		printf("%d/%d", i, (int)(greyInput.size()-1));
-		fflush(stdout);
 
+	// Process frames
+	double fps = -1;
+	time_t tStart = time(NULL);
+	for(int i=0;i<(int)(greyInput.size()-1);i++)
+	{	
+		// Print progress
+		for(int bs=0; bs<40; bs++) { printf("\b"); }
+		printf("%d/%d   fps: ", i, (int)(greyInput.size()-1));
+		if(fps>=0) printf("%.2f", fps);
+		fflush(stdout);		// Make printf work immediately
+
+		// Create transforms
 		TRANSFORM t(greyInput[i], greyInput[i+1], i, i+1);
 		//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
 		t.CreateAbsoluteTransform(result[i]);
 		//printf("%f\n", t.shiftsX[100][100]);
+		
+		// Add to the transform vector
 		result.push_back(t);
+		
+		// Calculate fps
+		time_t tEnd = time(NULL);
+		if(tEnd-tStart>FPS_AFTER)
+		{
+			fps = (double)(i+1)/(tEnd-tStart);
+		}
 	}
 	printf("\n");
 
@@ -65,13 +82,28 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 	vector<Mat> result;
 
 	//transform mats
-	for(int i=0;i<(int)input.size();i++){
+	double fps = -1;
+	time_t tStart = time(NULL);
+	for(int i=0;i<(int)input.size();i++)
+	{
+		// Print progress
 		for(int bs=0; bs<20; bs++) { printf("\b"); }
-		printf("%d/%d", i, (int)input.size());
-		fflush(stdout);
+		printf("%d/%d   fps: ", i, (int)input.size());
+		if(fps>=0) printf("%.2f", fps);
+		fflush(stdout);		// Make printf work immediately
 
+		// Create transforms
 		Mat out = transforms[i].TransformImage(input[i]);
+		
+		// Add to the output vector
 		result.push_back(out);
+		
+		// Calculate fps
+		time_t tEnd = time(NULL);
+		if(tEnd-tStart>FPS_AFTER)
+		{
+			fps = (double)(i+1)/(tEnd-tStart);
+		}
 	}
 	printf("\n");
 
@@ -92,7 +124,6 @@ void evalTransform(char *inFileName, char *outFileName, int pass){
 	VideoCapture capture = VideoCapture(inFileName);
 	if (capture.isOpened()) {
         printf("Opened %s\n", inFileName);
-        fflush(stdout);
     } else {
         printf("Could not open %s\n", inFileName);
         return;
@@ -315,22 +346,32 @@ int checkNumberArg(char *optarg, double min, double max, bool fp)
 {
 	int i;
 	bool point = false;
+	bool minus = false;
 	
 	// Is it a number?
 	for(i=0; i<(int)strlen(optarg); i++)
 	{
 		if(fp) {
 			// Must be floating point
-			if(optarg[i]<'0' || optarg[i]>'9' || (optarg[i]!='.' && optarg[i]!=',')) {
+			if((optarg[i]<'0' || optarg[i]>'9') && optarg[i]!='-' && optarg[i]!='.' && optarg[i]!=',') {
 				return 1;
 			} else {
 				// Only one point is allowed
-				if(point && (optarg[i]=='.' || optarg[i]==',')) return 3;
-				else point = true;
+				if(optarg[i]=='.' || optarg[i]==',')
+				{
+					if(point) return 3;
+					else point = true;
+				}
 			}
 		} else {
 			// Must be integer
-			if(optarg[i]<'0' || optarg[i]>'9') return 1;
+			if((optarg[i]<'0' || optarg[i]>'9') && optarg[i]!='-') return 1;
+		}
+		// Only one minus is allowed
+		if(optarg[i]=='-')
+		{
+			if(minus) return 3;
+			else minus = true;
 		}
 	}
 
@@ -358,7 +399,8 @@ static struct argp_option options[] = {
 	{"input", 'i', "file_name", 0, "Input video file", 0},
 	{"output", 'o', "file_name", 0, "Output video file", 0},
 	{"pass", 'p', "1 or 2", 0, "Do only selected processing pass", 0},
-	{"method", 500, "1..7", 0, "Processing method (see the list below)", 1},
+	{"method", 'm', "1..7", 0, "Processing method (see the list below)", 1},
+	{"threads", 500, "-1 or >1", 0, "Number of threads to use (default=auto)", 2},
 	{"warnings", 501, 0, 0, "Show all warnings/errors", 2},
 	{0, 0, 0, OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
@@ -396,7 +438,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			args->pass = atoi(arg);
 			break;
 			
-		case 500:
+		case 'm':
 			// Method
 			if(checkNumberArg(arg, 1, 7, false)) {
 				printf("Method should be a number from 1 to 7.\n");
@@ -404,7 +446,16 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			}
 			args->method = atoi(arg);
 			break;
-			
+
+		case 500:
+			// Threads
+			if(checkNumberArg(arg, -1, INT_MAX, false)) {
+				printf("Number of threads is either -1 (auto) or more than 1.\n");
+				exit(1);
+			}
+			args->threads = atoi(arg);
+			break;
+
 		case 501:
 			// Show warnings
 			args->warnings = true;
@@ -455,10 +506,26 @@ int main(int argc, char* argv[]){
 	args.outFileName = NULL;
 	args.pass = 0;
 	args.method = 1;
+	args.threads = -1;
 	args.warnings = false;
 
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;
+
+	// Threads
+	if(args.threads<1)
+	{
+		// Get the number of system cores
+		args.threads = std::thread::hardware_concurrency();
+		if(args.threads<1) {
+			printf("Cannot acquire the number of system cores. Using single-thread processing.\n");
+			printf("Set the number of threads manually using the --threads option.\n");
+			args.threads = 1;
+		}
+	}
+	printf("threads: %d\n", args.threads);
+	cv::setNumThreads(args.threads);
+	cv::setUseOptimized(true);
 
 	// Do processing
 	switch(args.method)

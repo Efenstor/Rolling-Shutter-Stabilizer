@@ -32,6 +32,7 @@ class ITransform
 
 		ITransform();
 		ITransform(Mat img1, Mat img2, int index0, int index1);
+		void TransformImageThread(Mat input, Mat out, threadParams params);
 		Mat TransformImage(Mat input);
 		virtual void TransformPoint(float x, float y, float &x2, float &y2) = 0;
 		virtual void TransformPointAbs(float x, float y, float &x2, float &y2) = 0;

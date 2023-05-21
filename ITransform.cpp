@@ -4,6 +4,7 @@
 #include <sstream>  // string to number conversion
 #include <time.h>
 #include <numeric>
+#include <thread>
 
 #include "nullTransform.h"
 #include "svd.h"
@@ -20,6 +21,8 @@
 #include "opencv2/imgproc/imgproc_c.h"
 
 
+extern arguments args;
+
 int ITransform::imgHeight;
 int ITransform::imgWidth;
 
@@ -30,10 +33,10 @@ int ITransform::processedFrameCount;
 ITransform::ITransform(){}
 ITransform::ITransform(Mat img1, Mat img2, int index0, int index1){}
 
-Mat ITransform::TransformImage(Mat input){
-	Mat out = Mat(input.rows, input.cols, input.type());
 
-	for(int y=frameBound.minY;y<frameBound.maxY;y++)
+void ITransform::TransformImageThread(Mat input, Mat out, threadParams params)
+{
+	for(int y=params.from;y<=params.to;y++)
 	{
 		for(int x=frameBound.minX;x<frameBound.maxX;x++)
 		{
@@ -88,6 +91,40 @@ Mat ITransform::TransformImage(Mat input){
 				}
 			}
 		}
+	}
+}
+
+Mat ITransform::TransformImage(Mat input)
+{
+	std::vector<threadParams> params;
+	
+	Mat out = Mat(input.rows, input.cols, input.type());
+
+	// Prepare threads
+	double rowsPerThread = (frameBound.maxY-frameBound.minY)/args.threads;
+	for(int t=0; t<args.threads; t++)
+	{
+		threadParams tp;
+		
+		tp.from = lround(frameBound.minY+(t*rowsPerThread));
+		if(t<args.threads-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread-1);
+		else tp.to = frameBound.maxY-1;
+		
+		params.push_back(tp);
+	}
+	
+	// Create threads
+	std::vector<std::thread> threads;
+	for(int t=0; t<args.threads; t++)
+	{
+		std::thread newThr(&ITransform::TransformImageThread, this, input, out, params.at(t));
+		threads.push_back(move(newThr));
+	}
+	
+	// Join threads
+	for(int t=0; t<args.threads; t++)
+	{
+		threads.at(t).join();
 	}
 
 	return out;

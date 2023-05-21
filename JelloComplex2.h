@@ -39,6 +39,7 @@ class JelloComplex2 : public ITransform {
 
         JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length);
 
+		void CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams params);
         void CreateAbsoluteTransform(JelloComplex2 prevTransform);
 
         void TransformPoint(float x, float y, float &x2, float &y2);

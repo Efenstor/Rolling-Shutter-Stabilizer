@@ -102,7 +102,14 @@ typedef struct
 {
   char *inFileName, *outFileName;
   int pass, method;
+  int threads;
   bool warnings;
 } arguments;
+
+typedef struct
+{
+	int from;
+	int to;
+} threadParams;
 
 #endif

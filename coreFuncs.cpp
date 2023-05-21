@@ -319,7 +319,7 @@ void writeVideo(vector<Mat> frames, float fps, string filename){
 		
 		for(int bs=0; bs<20; bs++) { printf("\b"); }
 		printf("%d/%d", i, (int) frames.size());
-		fflush(stdout);
+		fflush(stdout);		// Make printf work immediately
 		
 		Mat frame = frames[i];
 
