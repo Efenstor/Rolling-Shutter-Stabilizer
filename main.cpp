@@ -52,7 +52,7 @@ vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
 	{	
 		// Print progress
 		for(int bs=0; bs<40; bs++) { printf("\b"); }
-		printf("%d/%d   fps: ", i, (int)(greyInput.size()-1));
+		printf("%d/%d   fps: ", i, (int)(greyInput.size()-2));
 		if(fps>=0) printf("%.2f", fps);
 		fflush(stdout);		// Make printf work immediately
 
@@ -88,7 +88,7 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 	{
 		// Print progress
 		for(int bs=0; bs<20; bs++) { printf("\b"); }
-		printf("%d/%d   fps: ", i, (int)input.size());
+		printf("%d/%d   fps: ", i, (int)(input.size()-1));
 		if(fps>=0) printf("%.2f", fps);
 		fflush(stdout);		// Make printf work immediately
 
@@ -394,15 +394,17 @@ static char doc[] = "\nRolling Shutter Video Stabilization v" VERSION "\n"
 static char args_doc[] = "-i <input_file> -o <output_file>";
 
 static struct argp_option options[] = {
-	{0, 'h', 0, OPTION_HIDDEN, 0, 0},
-	{0, '?', 0, OPTION_HIDDEN, 0, 0},
-	{"input", 'i', "file_name", 0, "Input video file", 0},
-	{"output", 'o', "file_name", 0, "Output video file", 0},
-	{"pass", 'p', "1 or 2", 0, "Do only selected processing pass", 0},
-	{"method", 'm', "1..7", 0, "Processing method (see the list below)", 1},
-	{"threads", 500, "-1 or >1", 0, "Number of threads to use (default=auto)", 2},
-	{"warnings", 501, 0, 0, "Show all warnings/errors", 2},
-	{0, 0, 0, OPTION_DOC, "Processing methods:\n"
+	{0,				'h',	0,				OPTION_HIDDEN,	0, 0},
+	{0,				'?',	0,				OPTION_HIDDEN,	0, 0},
+	{"input",		'i',	"file_name",	0,"Input video file", 0},
+	{"output",		'o',	"file_name",	0, "Output video file", 0},
+	{"pass",		'p',	"1 or 2",		0, "Do only selected processing pass", 0},
+	{"method",		'm',	"1-7",			0, "Processing method (see the list below)", 1},
+	{"threads",		500,	"-1 or >0",		0, "Number of threads to use. Default=-1 (auto)", 2},
+	{"cols",		600,	">0",			0, "Feature tracking columns. Default=20", 2},
+	{"rows",		601,	">0",			0, "Feature tracking rows. Default=15", 2},
+	{"warnings",	501,	0,				0, "Show all warnings/errors", 2},
+	{0,				0,		0,				OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
 		"2 = JelloComplex1\n"
 		"3 = JelloTransform2\n"
@@ -460,6 +462,24 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			// Show warnings
 			args->warnings = true;
 			break;
+			
+		case 600:
+			// Corner columns
+			if(checkNumberArg(arg, 1, INT_MAX, false)) {
+				printf("Number of corner columns should be larger than 0.\n");
+				exit(1);
+			}
+			args->cornerCols = atoi(arg);
+			break;
+
+		case 601:
+			// Corner rows
+			if(checkNumberArg(arg, 1, INT_MAX, false)) {
+				printf("Number of corner rows should be larger than 0.\n");
+				exit(1);
+			}
+			args->cornerRows = atoi(arg);
+			break;
 		
 		case 'h':
 		case '?':
@@ -508,6 +528,8 @@ int main(int argc, char* argv[]){
 	args.method = 1;
 	args.threads = -1;
 	args.warnings = false;
+	args.cornerCols = 20;
+	args.cornerRows = 15;
 
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

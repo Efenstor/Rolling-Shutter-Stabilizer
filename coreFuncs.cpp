@@ -5,6 +5,7 @@
 #include <iomanip>  // for controlling float print precision
 #include <sstream>  // string to number conversion
 #include <time.h>
+#include <thread>
 
 #include "settings.h"
 #include "structures.h"
@@ -20,6 +21,8 @@
 
 using namespace std;
 using namespace cv;
+
+extern arguments args;
 
 void GenericTransformPoint(Transformation trans, float x, float y, float &x2, float &y2){
     x2 = (x-trans.ux1) * trans.cos - (y-trans.uy1) * trans.sin + trans.ux2;
@@ -187,45 +190,88 @@ vector<Point2f> extractCornersToTrack(Mat img){
 	return extractCornersToTrack(img, NUM_CORNERS);
 }
 
-vector<Point2f> extractCornersToTrack(Mat img, int numCorners){
-	vector<Point2f> corners;
+void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corners, threadParams tExtent)
+{
+	for(int col = tExtent.from; col<tExtent.to; col++)
+	{
+		int xLow = img.cols * col / args.cornerCols;
+		int xHigh = img.cols * (col+1) / args.cornerCols;
+		for(int row = 0; row<args.cornerRows; row++)
+		{
+			int yLow = img.rows * row / args.cornerRows;
+			int yHigh = img.rows * (row+1) / args.cornerRows;
+			
+			Mat m1 = img.rowRange(yLow, yHigh);
+			Mat m = m1.colRange(xLow, xHigh);
+			
+			Point2f offset(xLow, yLow);
+			vector<cv::Point2f> segmentCorners;
+			goodFeaturesToTrack(m, segmentCorners, numCorners/(args.cornerCols*args.cornerRows), qualityLevel, minDistance,cv::Mat());
+			for(int i=0; i<(int)segmentCorners.size(); i++)
+			{
+				corners.push_back(segmentCorners[i] + offset);
+			}
+		}
+	}
+}
+
+vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
+{
+	std::vector<threadParams> tExtent;
+	std::vector<Point2f> corners;
+
+	// Prepare threads
+	int tNum;
+	if(args.threads>args.cornerCols) tNum = args.cornerCols;
+	else tNum = args.threads;
+	double colsPerThread = (args.cornerCols/tNum);
+	for(int t=0; t<tNum; t++)
+	{
+		threadParams tp;
+		
+		tp.from = lround(t*colsPerThread);
+		if(t<tNum-1) tp.to = lround((t+1)*colsPerThread);
+		else tp.to = args.cornerCols;
+		
+		tExtent.push_back(tp);
+		//printf("tp.from=%d   tp.to==%d\n", tp.from, tp.to);
+	}
+	std::vector<std::vector<Point2f>> tCorners(tNum);
 	
 	//double qualityLevel = 0.02; 
 	//double minDistance = 5.0;
 	
+	// Find features to track
 	int type = 2;
-	
 	switch(type){
-	case 0: goodFeaturesToTrack( img,corners,numCorners,qualityLevel,minDistance,cv::Mat());
+	case 0: goodFeaturesToTrack(img,corners,numCorners,qualityLevel,minDistance,cv::Mat());
 		break;
-	case 1: goodFeaturesToTrack( img,corners,numCorners,qualityLevel,minDistance,cv::Mat(), 3, 1); //harris detector
+		
+	case 1: goodFeaturesToTrack(img,corners,numCorners,qualityLevel,minDistance,cv::Mat(), 3, 1); //harris detector
 		break;
+		
 	case 2:
-		int numCols = 15;
-		int numRows = numCols;
-		for(int col = 0;col<numCols;col++)
+		// Create threads
+		std::vector<std::thread> threads;
+		for(int t=0; t<tNum; t++)
 		{
-			for(int row = 0;row<numRows;row++)
+			std::thread newThr(extractCornersToTrackThread, img, numCorners, ref(tCorners.at(t)), tExtent.at(t));
+			threads.push_back(move(newThr));
+		}
+		// Join threads
+		for(int t=0; t<tNum; t++)
+		{
+			threads.at(t).join();
+		}
+		// Join vectors
+		for(int t=0; t<tNum; t++)
+		{
+			for(int i=0; i<(int)tCorners.at(t).size(); i++)
 			{
-				int xLow = img.cols * col / numCols;
-				int xHigh = img.cols * (col+1) / numCols;
-				int yLow = img.rows * row / numRows;
-				int yHigh = img.rows * (row+1) / numRows;
-				
-				Mat m1 = img.rowRange(yLow, yHigh);
-				Mat m = m1.colRange(xLow, xHigh);
-				
-				Point2f offset(xLow, yLow);
-				vector<cv::Point2f> segmentCorners;
-				goodFeaturesToTrack( m,segmentCorners,numCorners/(numCols * numRows),qualityLevel,minDistance,cv::Mat());
-				for(int i=0;i<(int)segmentCorners.size();i++)
-				{
-					corners.push_back(segmentCorners[i] + offset);
-				}
+				corners.push_back(tCorners.at(t).at(i));
 			}
 		}
 		break;
-		
 	}
 	
 	#if DO_CORNER_SUBPIX == 1
@@ -318,7 +364,7 @@ void writeVideo(vector<Mat> frames, float fps, string filename){
 	for(int i=0;i<(int)frames.size();i++){
 		
 		for(int bs=0; bs<20; bs++) { printf("\b"); }
-		printf("%d/%d", i, (int) frames.size());
+		printf("%d/%d", i, (int)(frames.size()-1));
 		fflush(stdout);		// Make printf work immediately
 		
 		Mat frame = frames[i];

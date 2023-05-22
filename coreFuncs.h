@@ -29,6 +29,7 @@ extern int *finalStageCounts;
 void GenericTransformPoint(Transformation trans, float x, float y, float &x2, float &y2);
 void GenericTransformPointAbs(AbsoluteTransformation absTrans, float x, float y, float &x2, float &y2);
 vector<Point2f> extractCornersToTrack(Mat img);
+void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corners, threadParams tExtent);
 vector<Point2f> extractCornersToTrack(Mat img, int numCorners);
 FeaturesInfo extractFeaturesToTrack(Mat img);
 vector<Mat> getAllInputFrames(VideoCapture* capture, int numFrames);

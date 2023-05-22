@@ -104,6 +104,8 @@ typedef struct
   int pass, method;
   int threads;
   bool warnings;
+  int cornerRows;
+  int cornerCols;
 } arguments;
 
 typedef struct

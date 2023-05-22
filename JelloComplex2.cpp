@@ -1889,7 +1889,6 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	vector<Point2f> corners1, corners2;
 	int length = GetPointsToTrack(img1, img2, corners1, corners2);
 	
-
 	timeval start;
 	gettimeofday(&start, NULL);
 	long startMs = (start.tv_sec * 1000) + (start.tv_usec/1000);
@@ -1904,9 +1903,9 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	//printf("elapsed ms: %d\n", (int)elapsedMs);
 }
 
-void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams params)
+void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams tExtent)
 {
-	for(int row=params.from;row<=params.to;row++)
+	for(int row=tExtent.from;row<tExtent.to;row++)
 	{
 		for(int col=0;col<imgWidth;col++)
 		{
@@ -1924,7 +1923,7 @@ void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, t
 
 void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
 {
-	std::vector<threadParams> params;
+	std::vector<threadParams> tExtent;
 
 	// Prepare threads
 	double rowsPerThread = imgHeight/args.threads;
@@ -1933,17 +1932,17 @@ void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
 		threadParams tp;
 		
 		tp.from = lround(t*rowsPerThread);
-		if(t<args.threads-1) tp.to = lround((t+1)*rowsPerThread-1);
-		else tp.to = imgHeight-1;
+		if(t<args.threads-1) tp.to = lround((t+1)*rowsPerThread);
+		else tp.to = imgHeight;
 		
-		params.push_back(tp);
+		tExtent.push_back(tp);
 	}
 	
 	// Create threads
 	std::vector<std::thread> threads;
 	for(int t=0; t<args.threads; t++)
 	{
-		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevTransform, params.at(t));
+		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevTransform, tExtent.at(t));
 		threads.push_back(move(newThr));
 	}
 	
