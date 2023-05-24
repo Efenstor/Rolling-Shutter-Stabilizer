@@ -33,6 +33,7 @@ Run *rsvs -h* for full help.
 
 Some clips, such as those with monotonic areas (e.g. sky) or fast movements may require additional tweaking:
 
-> *\--cols* (default = 20) and *\--rows* (default = 15)
 
-> The number of columns and rows of the feature detection algorithm. Try increasing these values for scenes with complex motion or decreasing for scenes with monotonic textures. Be aware that if these values are set too high the algorithm almost gets stuck, that means you have to roll back a little bit.
+> *-w* or *\--winsize* (default = 50): Try increasing this for scenes with fast panning movements.
+
+> *\--cols* (default = 20) and *\--rows* (default = 15): Try increasing these values for scenes with complex motion or decreasing for scenes with monotonic textures. Be aware that if these values are set too high the algorithm almost gets stuck, that means you have to roll back a little bit.

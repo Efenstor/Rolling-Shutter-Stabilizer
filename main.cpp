@@ -216,7 +216,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
 				Mat out = newTransform.TransformImage(frame);
 
 				// Save the frame to the file
-				if(args.crop)
+				if(!args.noCrop)
 				{
 					// Cropped
 					if(framesRead==2) cropBound = newTransform.frameBound;
@@ -612,15 +612,18 @@ static struct argp_option options[] = {
 	{0,				'?',	0,					OPTION_HIDDEN,	0, 0},
 	{"input",		'i',	"file_name",		0, "Input video file", 0},
 	{"output",		'o',	"file_name",		0, "Output video file", 0},
-	{"crop",		'c',	0,					0, "Crop output", 1},
+	{"nocrop",		'n',	0,					0, "Do not crop output", 1},
 	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=0.9", 1},
 	{"asmooth",		'a',	"float 0..1",		0, "Adaptive crop smoothness. Default=0.9", 1},
 	{"zoom",		'z',	"float .1..100",	0, "Additional zoom. Default=1.1", 1},
+	{"winsize",		'w',	"1..100000",		0, "Search window size. Default=50", 1},
 //	{"pass",		'p',	"1 or 2",			0, "Do only selected processing pass", 0},
 //	{"method",		'm',	"1-7",				0, "Processing method (see the list below)", 1},
 	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 2},
-	{"cols",		600,	"int 0..1000",		0, "Feature tracking columns. Default=20", 2},
-	{"rows",		601,	"int 0..1000",		0, "Feature tracking rows. Default=15", 2},
+	{"cols",		600,	"0..1000",			0, "Tracker corner columns. Default=20", 2},
+	{"rows",		601,	"0..1000",			0, "Tracker corner rows. Default=15", 2},
+	{"corners",		602,	"1..100000",		0, "Max number of tracker corners. Default=2000", 2},
+	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=.01", 2},
 	{"warnings",	501,	0,					0, "Show all warnings/errors", 2},
 /*	{0,				0,		0,					OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
@@ -669,7 +672,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			
 		case 'c':
 			// Crop
-			args->crop = true;
+			args->noCrop = true;
 			break;
 			
 		case 'a':
@@ -690,6 +693,14 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			args->jelloDecay = atof(arg);
 			break;
 
+		case 'w':
+			// Search window size
+			if(checkNumberArg(arg, 1, 100000, false)) {
+				printf("Search window size should be from 1 to 100000.\n");
+				exit(1);
+			}
+			args->winSize = atoi(arg);
+			break;
 
 		case 'z':
 			// Zoom
@@ -717,7 +728,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 600:
 			// Corner columns
 			if(checkNumberArg(arg, 1, 1000, false)) {
-				printf("Number of corner columns should be from 0 to 1000.\n");
+				printf("Number of corner columns should be from 1 to 1000.\n");
 				exit(1);
 			}
 			args->cornerCols = atoi(arg);
@@ -726,12 +737,30 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 601:
 			// Corner rows
 			if(checkNumberArg(arg, 1, 1000, false)) {
-				printf("Number of corner rows should be from 0 to 1000.\n");
+				printf("Number of corner rows should be from 1 to 1000.\n");
 				exit(1);
 			}
 			args->cornerRows = atoi(arg);
 			break;
-		
+
+		case 602:
+			// Corners
+			if(checkNumberArg(arg, 1, 100000, false)) {
+				printf("Number of corners should be from 1 to 100000.\n");
+				exit(1);
+			}
+			args->corners = atoi(arg);
+			break;
+
+		case 603:
+			// Quality level
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Quality level should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->qualityLevel = atof(arg);
+			break;
+
 		case 'h':
 		case '?':
 			// Show full help
@@ -779,12 +808,15 @@ int main(int argc, char* argv[]){
 	args.method = 1;
 	args.threads = -1;
 	args.warnings = false;
+	args.winSize = 50;
+	args.corners = 1000;
 	args.cornerCols = 20;
 	args.cornerRows = 15;
-	args.crop = false;
+	args.noCrop = false;
 	args.cSmooth = .9;
 	args.jelloDecay = .9;
 	args.zoom = 1.1;
+	args.qualityLevel = .01;
 
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

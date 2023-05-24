@@ -1937,13 +1937,14 @@ void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
 	std::vector<threadParams> tExtent;
 
 	// Prepare threads
-	double rowsPerThread = imgHeight/args.threads;
-	for(int t=0; t<args.threads; t++)
+	int tNum = args.threads;
+	double rowsPerThread = imgHeight/tNum;
+	for(int t=0; t<tNum; t++)
 	{
 		threadParams tp;
 		
 		tp.from = lround(t*rowsPerThread);
-		if(t<args.threads-1) tp.to = lround((t+1)*rowsPerThread);
+		if(t<tNum-1) tp.to = lround((t+1)*rowsPerThread);
 		else tp.to = imgHeight;
 		
 		tExtent.push_back(tp);
@@ -1951,14 +1952,14 @@ void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
 	
 	// Create threads
 	std::vector<std::thread> threads;
-	for(int t=0; t<args.threads; t++)
+	for(int t=0; t<tNum; t++)
 	{
 		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevTransform, tExtent.at(t));
 		threads.push_back(move(newThr));
 	}
 	
 	// Join threads
-	for(int t=0; t<args.threads; t++)
+	for(int t=0; t<tNum; t++)
 	{
 		threads.at(t).join();
 	}

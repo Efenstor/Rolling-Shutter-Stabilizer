@@ -100,7 +100,6 @@ vector<Point2f> extractCornersToTrackColor(Mat img){
 	return result;
 }
 
-#define qualityLevel 0.02
 #define minDistance 5.0
 
 
@@ -113,7 +112,7 @@ int *finalStageCounts;
 vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f offset){
 	vector<Point2f> result;
 
-	goodFeaturesToTrack( img, result,numCorners,qualityLevel,minDistance,cv::Mat());
+	goodFeaturesToTrack(img, result, numCorners, args.qualityLevel, minDistance,cv::Mat());
 
 	int counts[4];
 	memset(counts, 0, 4*sizeof(int));
@@ -206,7 +205,7 @@ void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corne
 			
 			Point2f offset(xLow, yLow);
 			vector<cv::Point2f> segmentCorners;
-			goodFeaturesToTrack(m, segmentCorners, numCorners/(args.cornerCols*args.cornerRows), qualityLevel, minDistance,cv::Mat());
+			goodFeaturesToTrack(m, segmentCorners, numCorners/(args.cornerCols*args.cornerRows), args.qualityLevel, minDistance,cv::Mat());
 			for(int i=0; i<(int)segmentCorners.size(); i++)
 			{
 				corners.push_back(segmentCorners[i] + offset);
@@ -221,9 +220,8 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	std::vector<Point2f> corners;
 
 	// Prepare threads
-	int tNum;
-	if(args.threads>args.cornerCols) tNum = args.cornerCols;
-	else tNum = args.threads;
+	int tNum = args.threads*2;
+	if(tNum>args.cornerCols) tNum = args.cornerCols;
 	double colsPerThread = (args.cornerCols/tNum);
 	for(int t=0; t<tNum; t++)
 	{
@@ -238,16 +236,15 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	}
 	std::vector<std::vector<Point2f>> tCorners(tNum);
 	
-	//double qualityLevel = 0.02; 
 	//double minDistance = 5.0;
 	
 	// Find features to track
 	int type = 2;
 	switch(type){
-	case 0: goodFeaturesToTrack(img,corners,numCorners,qualityLevel,minDistance,cv::Mat());
+	case 0: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance,cv::Mat());
 		break;
 		
-	case 1: goodFeaturesToTrack(img,corners,numCorners,qualityLevel,minDistance,cv::Mat(), 3, 1); //harris detector
+	case 1: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance,cv::Mat(), 3, 1); //harris detector
 		break;
 		
 	case 2:
@@ -383,13 +380,13 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
 	Size img_sz = img1.size();
 	Mat imgC(img_sz,1);
  
-	int win_size = 15;
-	int maxCorners = NUM_CORNERS;
+	int win_size = args.winSize;
+	int maxCorners = args.corners;
 
 	corners1 = extractCornersToTrack(img1);
 	//corners1 = extractCornersRecursive(img1);
 
-	corners1.reserve(maxCorners); 
+	corners1.reserve(maxCorners);
 	corners2.reserve(maxCorners);
 
 	//Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );

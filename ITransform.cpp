@@ -102,13 +102,14 @@ Mat ITransform::TransformImage(Mat input)
 	Mat out = Mat(input.rows, input.cols, input.type(), .0);
 
 	// Prepare threads
-	double rowsPerThread = (frameBound.maxY-frameBound.minY)/args.threads;
-	for(int t=0; t<args.threads; t++)
+	int tNum = args.threads;
+	double rowsPerThread = (frameBound.maxY-frameBound.minY)/tNum;
+	for(int t=0; t<tNum; t++)
 	{
 		threadParams tp;
 		
 		tp.from = lround(frameBound.minY+(t*rowsPerThread));
-		if(t<args.threads-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread-1);
+		if(t<tNum-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread-1);
 		else tp.to = frameBound.maxY-1;
 		
 		tExtent.push_back(tp);
@@ -116,14 +117,14 @@ Mat ITransform::TransformImage(Mat input)
 	
 	// Create threads
 	std::vector<std::thread> threads;
-	for(int t=0; t<args.threads; t++)
+	for(int t=0; t<tNum; t++)
 	{
 		std::thread newThr(&ITransform::TransformImageThread, this, input, out, tExtent.at(t));
 		threads.push_back(move(newThr));
 	}
 	
 	// Join threads
-	for(int t=0; t<args.threads; t++)
+	for(int t=0; t<tNum; t++)
 	{
 		threads.at(t).join();
 	}

@@ -115,12 +115,15 @@ typedef struct
   int pass, method;
   int threads;
   bool warnings;
+  int corners;
   int cornerRows;
   int cornerCols;
-  int crop;
+  int winSize;
+  int noCrop;
   double cSmooth;
   double zoom;
   double jelloDecay;
+  double qualityLevel;
 } arguments;
 
 typedef struct

@@ -179,7 +179,6 @@ void JelloTransform2::TransformPoint(float x, float y, float &x2, float &y2){
             if(w < 0)  w = 0.0;
             else if(w > 1) w = 1.0;
 
-
             float x2_0, y2_0, x2_1, y2_1;
 
             GenericTransformPoint(jelloTransforms[svdIndex0], x, y, x2_0, y2_0);
