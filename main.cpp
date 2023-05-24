@@ -28,11 +28,149 @@
 #include "opencv2/imgproc/imgproc_c.h"
 
 #define VERSION "0.5"
+#define PASS1EXT ".pass1"
 
 using namespace std;
 using namespace cv;
 
 arguments args;
+
+template <class TRANSFORM>
+void AllocateMem(TransformationMem *tm, int width, int height, int numParams)
+{
+	tm->width = width;
+	tm->height = height;
+	tm->numParams = numParams;
+	
+	tm->shiftsX = new float*[height];
+	tm->shiftsY = new float*[height];
+
+	tm->params = new float[numParams];
+	memset(tm->params, 0, numParams*sizeof(float));
+
+	for(int row=0;row<height;row++){
+		tm->shiftsX[row] = new float[width];
+		tm->shiftsY[row] = new float[width];
+		memset(tm->shiftsX[row], 0, width * sizeof(float));
+		memset(tm->shiftsY[row], 0, width * sizeof(float));
+	}
+}
+
+template <class TRANSFORM>
+void CopyMem(TransformationMem *src, TransformationMem *dst)
+{
+	memcpy(dst->params, src->params, sizeof(float)*src->numParams);
+	
+	for(int row=0;row<src->height;row++){
+		memcpy(dst->shiftsX[row], src->shiftsX[row], src->width * sizeof(float));
+		memcpy(dst->shiftsY[row], src->shiftsY[row], src->width * sizeof(float));
+	}
+	
+}
+
+template <class TRANSFORM>
+void evalTransformStream(char *inFileName, char *outFileName)
+{
+	// Open input file
+	VideoCapture capture = VideoCapture(inFileName);
+	if (capture.isOpened()) {
+        printf("Opened %s\n", inFileName);
+    } else {
+        printf("Could not open %s\n", inFileName);
+        exit(1);
+    }
+
+	// Get file properties
+	int numFrames;
+	numFrames = (int)capture.get(CAP_PROP_FRAME_COUNT);
+	printf("number of frames: %d\n", numFrames);
+	int width = capture.get(CAP_PROP_FRAME_WIDTH);
+	int height = capture.get(CAP_PROP_FRAME_HEIGHT);
+	double fps = capture.get(CAP_PROP_FPS);
+	TRANSFORM::processedFrameCount = 0;
+	printf("height: %d   width: %d   fps: %f\n", height, width, fps);
+
+	// Create output file
+	VideoWriter outputVideo;
+	Size size(width, height);
+	outputVideo.open(outFileName, VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, size, true);
+	if(outputVideo.isOpened()) {
+		printf("Saving as %s\n", outFileName);
+	} else {
+		printf("Failed to create output file %s\n", outFileName);
+		exit(2);
+	}
+
+	// Init transforms
+	TransformationMem prevMem, newMem;
+    AllocateMem<TRANSFORM>(&prevMem, width, height, NUM_PARAMS);
+    AllocateMem<TRANSFORM>(&newMem, width, height, NUM_PARAMS);
+    TRANSFORM::imgWidth = width;
+	TRANSFORM::imgHeight = height;
+	TRANSFORM prevTransform(&newMem);
+    
+    // Init others
+    Mat greyInput[2];
+    capture.set(CAP_PROP_POS_FRAMES, 0);
+
+	// Read and process
+	double procFps = -1;
+	time_t tStart = time(NULL);
+    for(int i=0;i<numFrames;i++)
+    {
+        Mat frame;
+        if (!capture.read(frame)) {
+			if(args.warnings) printf("warning: cannot get frame %d, skipping\n", i);
+        } else {
+			// Print progress
+			for(int bs=0; bs<40; bs++) { printf("\b"); }
+			printf("%d/%d   fps: ", i, numFrames-2);
+			if(procFps>=0) printf("%.2f ", procFps);
+			fflush(stdout);		// Make printf work immediately
+			
+			// Convert frame to greyscale
+			Mat greyMat;
+			cvtColor(frame, greyMat, CV_BGR2GRAY);
+			if(i>0) greyMat.copyTo(greyInput[1]);
+			else greyMat.copyTo(greyInput[0]);
+			
+			// Process if more than 1 frame is read
+			if(i>0)
+			{
+				// Create a transform matrix using previous the frame and the current
+				TRANSFORM newTransform = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
+				//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
+				newTransform.CreateAbsoluteTransform(prevTransform);
+				//printf("%f\n", t.shiftsX[100][100]);
+				
+				// Transform the frame
+				Mat out = newTransform.TransformImage(frame);
+
+				// Save the frame to the file
+				outputVideo.write(out);
+				
+				// Shift
+				prevTransform = std::move(newTransform);
+				CopyMem<TRANSFORM>(&newMem, &prevMem);
+			}
+			
+			// Shift
+			if(i>0) greyInput[1].copyTo(greyInput[0]);
+			
+			// Calculate processing fps
+			time_t tEnd = time(NULL);
+			if(tEnd-tStart>FPS_AFTER)
+			{
+				procFps = (double)(i+1)/(tEnd-tStart);
+			}
+        }
+    }
+
+    // Analyze accuracies
+    //TRANSFORM::analyzeTransformAccuracies();
+    
+    printf("\nDone!\n");
+}
 
 template <class TRANSFORM>
 vector<TRANSFORM> getImageTransformsFromGrey(vector<Mat> greyInput){
@@ -120,7 +258,7 @@ vector<Mat> transformMats(vector<Mat> input, vector<TRANSFORM> transforms){
 }
 
 template <class TRANSFORM>
-void evalTransform(char *inFileName, char *outFileName, int pass){
+void evalTransform(char *inFileName, char *outFileName){
 	VideoCapture capture = VideoCapture(inFileName);
 	if (capture.isOpened()) {
         printf("Opened %s\n", inFileName);
@@ -386,32 +524,29 @@ const char *argp_program_version = VERSION;
 const char *argp_program_bug_address = "https://github.com/Efenstor/Rolling-Shutter-Video-Stabilization/issues";
 
 static char doc[] = "\nRolling Shutter Video Stabilization v" VERSION "\n"
-"Algorithms and the OpenCV implementation (C) 2014 Nick Stupich.\n\n"
-"All processing is done in two passes, the results of the first pass are saved\n"
-"into a <input_file>.pass1 file created in the same directory. To tweak\n"
-"processing parameters you can skip the first pass if you already did it once.";
+"Algorithms and the OpenCV implementation (C) 2014 Nick Stupich.\n";
 
 static char args_doc[] = "-i <input_file> -o <output_file>";
 
 static struct argp_option options[] = {
 	{0,				'h',	0,				OPTION_HIDDEN,	0, 0},
 	{0,				'?',	0,				OPTION_HIDDEN,	0, 0},
-	{"input",		'i',	"file_name",	0,"Input video file", 0},
+	{"input",		'i',	"file_name",	0, "Input video file", 0},
 	{"output",		'o',	"file_name",	0, "Output video file", 0},
-	{"pass",		'p',	"1 or 2",		0, "Do only selected processing pass", 0},
-	{"method",		'm',	"1-7",			0, "Processing method (see the list below)", 1},
+//	{"pass",		'p',	"1 or 2",		0, "Do only selected processing pass", 0},
+//	{"method",		'm',	"1-7",			0, "Processing method (see the list below)", 1},
 	{"threads",		500,	"-1 or >0",		0, "Number of threads to use. Default=-1 (auto)", 2},
 	{"cols",		600,	">0",			0, "Feature tracking columns. Default=20", 2},
 	{"rows",		601,	">0",			0, "Feature tracking rows. Default=15", 2},
 	{"warnings",	501,	0,				0, "Show all warnings/errors", 2},
-	{0,				0,		0,				OPTION_DOC, "Processing methods:\n"
+/*	{0,				0,		0,				OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
 		"2 = JelloComplex1\n"
 		"3 = JelloTransform2\n"
 		"4 = JelloTransform1\n"
 		"5 = FullFrameTransform2 (for debug use)\n"
 		"6 = FullFrameTransform (for debug use)\n"
-		"7 = NullTransform (for debug use)", 0},
+		"7 = NullTransform (for debug use)", 0},*/
 	{0, 0, 0, 0, 0, 0}
 };
 
@@ -552,13 +687,36 @@ int main(int argc, char* argv[]){
 	// Do processing
 	switch(args.method)
 	{
-		case 1: evalTransform<JelloComplex2>(args.inFileName, args.outFileName, args.pass); break;
-		case 2: evalTransform<JelloComplex1>(args.inFileName, args.outFileName, args.pass); break;
-		case 3: evalTransform<JelloTransform2>(args.inFileName, args.outFileName, args.pass); break;
-		case 4: evalTransform<JelloTransform1>(args.inFileName, args.outFileName, args.pass); break;
-		case 5: evalTransform<FullFrameTransform2>(args.inFileName, args.outFileName, args.pass); break;
-		case 6: evalTransform<FullFrameTransform>(args.inFileName, args.outFileName, args.pass); break;
-		case 7: evalTransform<NullTransform>(args.inFileName, args.outFileName, args.pass); break;
+		case 1:
+			evalTransformStream<JelloComplex2>(args.inFileName, args.outFileName);
+			//evalTransformPass2<JelloComplex2>(args.inFileName, args.outFileName, tJelloComplex2);
+			//evalTransform<JelloComplex2>(args.inFileName, args.outFileName);
+			break;
+
+		case 2:
+			evalTransform<JelloComplex1>(args.inFileName, args.outFileName);
+			break;
+
+		case 3:
+			evalTransform<JelloTransform2>(args.inFileName, args.outFileName);
+			break;
+
+		case 4:
+			evalTransform<JelloTransform1>(args.inFileName, args.outFileName);
+			break;
+
+		case 5:
+			evalTransform<FullFrameTransform2>(args.inFileName, args.outFileName);
+			break;
+
+		case 6:
+			evalTransform<FullFrameTransform>(args.inFileName, args.outFileName);
+			break;
+
+		case 7:
+			evalTransform<NullTransform>(args.inFileName, args.outFileName);
+			break;
+
 	}
 	
 	/*switch(args.debugOpt)

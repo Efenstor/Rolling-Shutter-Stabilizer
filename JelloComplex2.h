@@ -33,11 +33,11 @@ class JelloComplex2 : public ITransform {
 
         int jelloMinX, jelloMinY;
 
-        JelloComplex2();
+        JelloComplex2(TransformationMem *tm);
 
-        JelloComplex2(Mat img1, Mat img2, int index0, int index1);
+        JelloComplex2(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm);
 
-        JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length);
+        JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length, TransformationMem *tm);
 
 		void CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams tExtent);
         void CreateAbsoluteTransform(JelloComplex2 prevTransform);
@@ -60,10 +60,10 @@ class JelloComplex2 : public ITransform {
         void ImproveSineEstimatesWelsch(vector<float> ys, vector<float> diffs, vector<float> weights, int length, float* params, float* &updates, float &lambda, float w);
         float SineEstimatesCostWelsch(vector<float> ys, vector<float> diffs, vector<float> weights, float* params, float w);
         void FullModelWelschFit(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates, float &lambda, float w);
+        void AssignShiftMem(TransformationMem *tm);
         void AllocateShiftMem();
 
-
-    void getUpdate(arma::Mat<float> jacobian, arma::Col<float> fVector, int numParams, float* &updates);
+		void getUpdate(arma::Mat<float> jacobian, arma::Col<float> fVector, int numParams, float* &updates);
 
         static vector<float> allWelschCosts;
         static vector<float> initialWelschCosts;

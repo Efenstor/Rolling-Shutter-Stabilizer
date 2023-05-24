@@ -78,7 +78,7 @@ void JelloTransform2::CalcJelloTransform(Mat img1, Mat img2){
 		Size( win_size, win_size ), 5,
 		 cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3 ), 0 );
 	
-	//#ifdef SHFITS_FILENAME
+	#ifdef SHFITS_FILENAME
 		char outputFilename[100];
 		sprintf(outputFilename, "data/pts%d.txt", processedFrameCount++);
 		FILE* fp = fopen(outputFilename, "w");
@@ -91,7 +91,7 @@ void JelloTransform2::CalcJelloTransform(Mat img1, Mat img2){
 			}
 			fclose(fp);
 		}
-	//#endif
+	#endif
 
 	#if(1)
 	float rowDistance = imgHeight / (SVD_ROWS-1);

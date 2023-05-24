@@ -98,7 +98,8 @@ Mat ITransform::TransformImage(Mat input)
 {
 	std::vector<threadParams> tExtent;
 	
-	Mat out = Mat(input.rows, input.cols, input.type());
+	// Create new matrix filled with zeroes
+	Mat out = Mat(input.rows, input.cols, input.type(), .0);
 
 	// Prepare threads
 	double rowsPerThread = (frameBound.maxY-frameBound.minY)/args.threads;

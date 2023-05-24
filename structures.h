@@ -28,6 +28,17 @@ typedef struct
     float cos;
     float sin;
 } Transformation;
+
+typedef struct
+{
+    float **shiftsX;
+    float **shiftsY;
+    float *params;
+    int width;
+    int height;
+    int numParams;
+} TransformationMem;
+
 /*
 class Transformation{
 public:

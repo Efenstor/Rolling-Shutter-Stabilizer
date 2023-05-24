@@ -91,11 +91,15 @@ vector<float> JelloComplex2::allWelschCosts;
 vector<float> JelloComplex2::initialWelschCosts;
 vector<float> JelloComplex2::fullFrameWelschCosts;
 
-JelloComplex2::JelloComplex2(){
-	AllocateShiftMem();
+JelloComplex2::JelloComplex2(TransformationMem *tm)
+{
+	AssignShiftMem(tm);
+	//AllocateShiftMem();
 }
 
-JelloComplex2::JelloComplex2(Mat img1, Mat img2, int index0, int index1){
+JelloComplex2::JelloComplex2(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm)
+{
+	AssignShiftMem(tm);
 	imgBound ib = {0, img1.cols, 0, img1.rows};
 	frameBound = ib;
 	centerX = img1.cols / 2.0;
@@ -107,17 +111,25 @@ JelloComplex2::JelloComplex2(Mat img1, Mat img2, int index0, int index1){
 		evalTransforms(index0, index1, (char*)SHFITS_FILENAME);
 
 	#endif
-	
-	AllocateShiftMem();
 
+	//AllocateShiftMem();
 }
 
 /* *** Test constructor ***    */
-JelloComplex2::JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length){
-	params = new float[NUM_PARAMS];
-	memset(params, 0, NUM_PARAMS*sizeof(float));
-	AllocateShiftMem();
+JelloComplex2::JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length, TransformationMem *tm)
+{
+	AssignShiftMem(tm);
+	//params = new float[NUM_PARAMS];
+	//memset(params, 0, NUM_PARAMS*sizeof(float));
+	//AllocateShiftMem();
 	CalculateModelParameters(corners1, corners2, length, params);
+}
+
+void JelloComplex2::AssignShiftMem(TransformationMem *tm)
+{
+	params = tm->params;
+	shiftsX = tm->shiftsX;
+	shiftsY = tm->shiftsY;
 }
 
 void JelloComplex2::AllocateShiftMem(){
@@ -1881,7 +1893,6 @@ void JelloComplex2::model2LMIterationWelsch(vector<Point2f> corners1, vector<Poi
 }
 
 void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
-	params = new float[NUM_PARAMS];
 	for(int i=0;i<NUM_PARAMS;i++){
 		params[i] = 0;
 	}
@@ -1889,18 +1900,18 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	vector<Point2f> corners1, corners2;
 	int length = GetPointsToTrack(img1, img2, corners1, corners2);
 	
-	timeval start;
+	/*timeval start;
 	gettimeofday(&start, NULL);
-	long startMs = (start.tv_sec * 1000) + (start.tv_usec/1000);
+	long startMs = (start.tv_sec * 1000) + (start.tv_usec/1000);*/
 	
 	CalculateModelParameters(corners1, corners2, length, params);
 
-	timeval end;
+	/*timeval end;
 	gettimeofday(&end, NULL);
 	long endMs = (end.tv_sec * 1000) + (end.tv_usec/1000);
 	long elapsedMs = endMs - startMs;
 	//msTotal += elapsedMs;
-	//printf("elapsed ms: %d\n", (int)elapsedMs);
+	//printf("elapsed ms: %d\n", (int)elapsedMs);*/
 }
 
 void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams tExtent)
