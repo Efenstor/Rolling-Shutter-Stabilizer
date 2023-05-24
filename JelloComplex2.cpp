@@ -1926,8 +1926,8 @@ void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, t
 			float y = row + prevTransform.shiftsY[row][col];
 			TransformPoint(x, y, x2, y2);
 
-			shiftsX[row][col] = prevTransform.shiftsX[row][col] * JELLO_DECAY - x2 + x;
-			shiftsY[row][col] = prevTransform.shiftsY[row][col] * JELLO_DECAY - y2 + y;
+			shiftsX[row][col] = prevTransform.shiftsX[row][col] * args.jelloDecay - x2 + x;
+			shiftsY[row][col] = prevTransform.shiftsY[row][col] * args.jelloDecay - y2 + y;
 		}
 	}
 }

@@ -69,6 +69,69 @@ void CopyMem(TransformationMem *src, TransformationMem *dst)
 }
 
 template <class TRANSFORM>
+Mat Crop(Mat input, imgBound *cropBound, imgBound newBound, Size size)
+{
+	// Output frame aspect
+	double aspect = (double)size.height/size.width;
+
+	// Smoothen transform boundaries
+	if(args.cSmooth>0)
+	{
+		cropBound->minX = lround(newBound.minX+(cropBound->minX-newBound.minX)*args.cSmooth);
+		cropBound->maxX = lround(newBound.maxX+(cropBound->maxX-newBound.maxX)*args.cSmooth);
+		cropBound->minY = lround(newBound.minY+(cropBound->minY-newBound.minY)*args.cSmooth);
+		cropBound->maxY = lround(newBound.maxY+(cropBound->maxY-newBound.maxY)*args.cSmooth);
+	}
+	
+	// All values
+	int minX = cropBound->minX;
+	int maxX = cropBound->maxX;
+	int minY = cropBound->minY;
+	int maxY = cropBound->maxY;
+	int width = maxX-minX+1;
+	int height = maxY-minY+1;
+
+	// Zoom
+	int zoomOffX = (width-width/args.zoom)/2;
+	int zoomOffY = (height-height/args.zoom)/2;
+	minX += zoomOffX;
+	maxX -= zoomOffX;
+	minY += zoomOffY;
+	maxY -= zoomOffY;
+	width = maxX-minX+1;
+	height = maxY-minY+1;
+	
+	// Conform to aspect
+	int pWidth = (int)(height/aspect);		// Proposed width keeping height
+	int pHeight = (int)(width*aspect);		// Proposed height keeping width
+	if(pHeight<height)
+	{
+		// Crop vertically
+		int c = (maxY-minY)/2;
+		minY = minY+(c-pHeight/2);
+		maxY = minY+pHeight;
+	} else {
+		// Crop horizontally
+		int c = (maxX-minX)/2;
+		minX = minX+(c-pWidth/2);
+		maxX = minX+pWidth;
+	}
+	
+	// Limit (crash-proofing)
+	if(minX<0) minX = 0;
+	if(maxX>size.width-1) maxX = size.width-1;
+	if(minY<0) minY = 0;
+	if(maxY>size.height-1) maxY = size.height-1;
+	
+	// Crop and upscale
+	Rect rCrop(minX, minY, maxX-minX, maxY-minY);
+	Mat out = Mat(size, input.type());
+	cv::resize(Mat(input, rCrop), out, size, 0, 0, INTER_CUBIC);
+	
+	return out;
+}
+
+template <class TRANSFORM>
 void evalTransformStream(char *inFileName, char *outFileName)
 {
 	// Open input file
@@ -111,17 +174,23 @@ void evalTransformStream(char *inFileName, char *outFileName)
     
     // Init others
     Mat greyInput[2];
+    imgBound cropBound;
     capture.set(CAP_PROP_POS_FRAMES, 0);
 
 	// Read and process
 	double procFps = -1;
 	time_t tStart = time(NULL);
+	int framesRead = 0;
     for(int i=0;i<numFrames;i++)
     {
         Mat frame;
         if (!capture.read(frame)) {
+			// Cannot read
 			if(args.warnings) printf("warning: cannot get frame %d, skipping\n", i);
         } else {
+			// Read
+			framesRead++;
+			
 			// Print progress
 			for(int bs=0; bs<40; bs++) { printf("\b"); }
 			printf("%d/%d   fps: ", i, numFrames-2);
@@ -135,22 +204,32 @@ void evalTransformStream(char *inFileName, char *outFileName)
 			else greyMat.copyTo(greyInput[0]);
 			
 			// Process if more than 1 frame is read
-			if(i>0)
+			if(framesRead>1)
 			{
 				// Create a transform matrix using previous the frame and the current
 				TRANSFORM newTransform = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
 				//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
 				newTransform.CreateAbsoluteTransform(prevTransform);
 				//printf("%f\n", t.shiftsX[100][100]);
-				
+
 				// Transform the frame
 				Mat out = newTransform.TransformImage(frame);
 
 				// Save the frame to the file
-				outputVideo.write(out);
-				
-				// Shift
+				if(args.crop)
+				{
+					// Cropped
+					if(framesRead==2) cropBound = newTransform.frameBound;
+					Mat outCropped = Crop<TRANSFORM>(out, &cropBound, newTransform.frameBound, size);
+					outputVideo.write(outCropped);
+				} else {
+					// Full frame
+					outputVideo.write(out);
+				}
+
+				// Shift frame data
 				prevTransform = std::move(newTransform);
+				
 				CopyMem<TRANSFORM>(&newMem, &prevMem);
 			}
 			
@@ -529,17 +608,21 @@ static char doc[] = "\nRolling Shutter Video Stabilization v" VERSION "\n"
 static char args_doc[] = "-i <input_file> -o <output_file>";
 
 static struct argp_option options[] = {
-	{0,				'h',	0,				OPTION_HIDDEN,	0, 0},
-	{0,				'?',	0,				OPTION_HIDDEN,	0, 0},
-	{"input",		'i',	"file_name",	0, "Input video file", 0},
-	{"output",		'o',	"file_name",	0, "Output video file", 0},
-//	{"pass",		'p',	"1 or 2",		0, "Do only selected processing pass", 0},
-//	{"method",		'm',	"1-7",			0, "Processing method (see the list below)", 1},
-	{"threads",		500,	"-1 or >0",		0, "Number of threads to use. Default=-1 (auto)", 2},
-	{"cols",		600,	">0",			0, "Feature tracking columns. Default=20", 2},
-	{"rows",		601,	">0",			0, "Feature tracking rows. Default=15", 2},
-	{"warnings",	501,	0,				0, "Show all warnings/errors", 2},
-/*	{0,				0,		0,				OPTION_DOC, "Processing methods:\n"
+	{0,				'h',	0,					OPTION_HIDDEN,	0, 0},
+	{0,				'?',	0,					OPTION_HIDDEN,	0, 0},
+	{"input",		'i',	"file_name",		0, "Input video file", 0},
+	{"output",		'o',	"file_name",		0, "Output video file", 0},
+	{"crop",		'c',	0,					0, "Crop output", 1},
+	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=0.9", 1},
+	{"asmooth",		'a',	"float 0..1",		0, "Adaptive crop smoothness. Default=0.9", 1},
+	{"zoom",		'z',	"float .1..100",	0, "Additional zoom. Default=1.1", 1},
+//	{"pass",		'p',	"1 or 2",			0, "Do only selected processing pass", 0},
+//	{"method",		'm',	"1-7",				0, "Processing method (see the list below)", 1},
+	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 2},
+	{"cols",		600,	"int 0..1000",		0, "Feature tracking columns. Default=20", 2},
+	{"rows",		601,	"int 0..1000",		0, "Feature tracking rows. Default=15", 2},
+	{"warnings",	501,	0,					0, "Show all warnings/errors", 2},
+/*	{0,				0,		0,					OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
 		"2 = JelloComplex1\n"
 		"3 = JelloTransform2\n"
@@ -583,6 +666,39 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			}
 			args->method = atoi(arg);
 			break;
+			
+		case 'c':
+			// Crop
+			args->crop = true;
+			break;
+			
+		case 'a':
+			// Adaptive crop smoothness
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Crop smoothness should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->cSmooth = atof(arg);
+			break;
+			
+		case 's':
+			// Stabilization smoothness (jello decay)
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Stabilization smoothness should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->jelloDecay = atof(arg);
+			break;
+
+
+		case 'z':
+			// Zoom
+			if(checkNumberArg(arg, .1, 100, true)) {
+				printf("Zoom should be a floating-point number from .1 to 100.\n");
+				exit(1);
+			}
+			args->zoom = atof(arg);
+			break;
 
 		case 500:
 			// Threads
@@ -600,8 +716,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			
 		case 600:
 			// Corner columns
-			if(checkNumberArg(arg, 1, INT_MAX, false)) {
-				printf("Number of corner columns should be larger than 0.\n");
+			if(checkNumberArg(arg, 1, 1000, false)) {
+				printf("Number of corner columns should be from 0 to 1000.\n");
 				exit(1);
 			}
 			args->cornerCols = atoi(arg);
@@ -609,8 +725,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case 601:
 			// Corner rows
-			if(checkNumberArg(arg, 1, INT_MAX, false)) {
-				printf("Number of corner rows should be larger than 0.\n");
+			if(checkNumberArg(arg, 1, 1000, false)) {
+				printf("Number of corner rows should be from 0 to 1000.\n");
 				exit(1);
 			}
 			args->cornerRows = atoi(arg);
@@ -665,6 +781,10 @@ int main(int argc, char* argv[]){
 	args.warnings = false;
 	args.cornerCols = 20;
 	args.cornerRows = 15;
+	args.crop = false;
+	args.cSmooth = .9;
+	args.jelloDecay = .9;
+	args.zoom = 1.1;
 
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

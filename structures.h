@@ -117,6 +117,10 @@ typedef struct
   bool warnings;
   int cornerRows;
   int cornerCols;
+  int crop;
+  double cSmooth;
+  double zoom;
+  double jelloDecay;
 } arguments;
 
 typedef struct
