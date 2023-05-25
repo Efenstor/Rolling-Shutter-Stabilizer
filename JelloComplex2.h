@@ -39,8 +39,8 @@ class JelloComplex2 : public ITransform {
 
         JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length, TransformationMem *tm);
 
-		void CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams tExtent);
-        void CreateAbsoluteTransform(JelloComplex2 prevTransform);
+		void CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent);
+        void CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem);
 
         void TransformPoint(float x, float y, float &x2, float &y2);
 
@@ -61,7 +61,6 @@ class JelloComplex2 : public ITransform {
         float SineEstimatesCostWelsch(vector<float> ys, vector<float> diffs, vector<float> weights, float* params, float w);
         void FullModelWelschFit(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates, float &lambda, float w);
         void AssignShiftMem(TransformationMem *tm);
-        void AllocateShiftMem();
 
 		void getUpdate(arma::Mat<float> jacobian, arma::Col<float> fVector, int numParams, float* &updates);
 

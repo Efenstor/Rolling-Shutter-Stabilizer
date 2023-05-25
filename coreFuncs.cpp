@@ -56,9 +56,9 @@ vector<Point2f> extractCornersToTrackColor(Mat img){
 	waitKey(0);     
 	*/
 
-	vector<Point2f> result = extractCornersToTrack(channel[0], NUM_CORNERS/3);
-	vector<Point2f> addition = extractCornersToTrack(channel[1], NUM_CORNERS/3);
-	vector<Point2f> addition2 = extractCornersToTrack(channel[2], NUM_CORNERS/3);
+	vector<Point2f> result = extractCornersToTrack(channel[0], args.corners/3);
+	vector<Point2f> addition = extractCornersToTrack(channel[1], args.corners/3);
+	vector<Point2f> addition2 = extractCornersToTrack(channel[2], args.corners/3);
 
 	/*
 	result.insert(result.end(), addition.begin(), addition.end());
@@ -104,7 +104,7 @@ vector<Point2f> extractCornersToTrackColor(Mat img){
 
 
 vector<Point2f> extractCornersRecursive(Mat img){
-	return extractCornersRecursiveInner(img, NUM_CORNERS, Point2f(0, 0));
+	return extractCornersRecursiveInner(img, args.corners, Point2f(0, 0));
 }
 
 int *finalStageCounts;
@@ -166,13 +166,13 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 		result.insert(result.end(), q3.begin(), q3.end());
 			
 	} else{
-		int depth = (int)log2(NUM_CORNERS / numCorners)/2;
+		int depth = (int)log2(args.corners / numCorners)/2;
 		finalStageCounts[depth] ++;
 
 		 if(result.size() > 0){
 
 			#if DO_CORNER_SUBPIX == 1
-				cornerSubPix( img, result, Size( WIN_SIZE, WIN_SIZE ), Size( -1, -1 ), 
+				cornerSubPix( img, result, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
 							  TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
 			#endif
 		}
@@ -186,7 +186,7 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 }
 
 vector<Point2f> extractCornersToTrack(Mat img){
-	return extractCornersToTrack(img, NUM_CORNERS);
+	return extractCornersToTrack(img, args.corners);
 }
 
 void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corners, threadParams tExtent)
@@ -220,9 +220,9 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	std::vector<Point2f> corners;
 
 	// Prepare threads
-	int tNum = args.threads*2;
+	int tNum = args.threads;
 	if(tNum>args.cornerCols) tNum = args.cornerCols;
-	double colsPerThread = (args.cornerCols/tNum);
+	double colsPerThread = ((double)args.cornerCols/tNum);
 	for(int t=0; t<tNum; t++)
 	{
 		threadParams tp;
@@ -241,10 +241,10 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	// Find features to track
 	int type = 2;
 	switch(type){
-	case 0: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance,cv::Mat());
+	case 0: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance, cv::Mat());
 		break;
 		
-	case 1: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance,cv::Mat(), 3, 1); //harris detector
+	case 1: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance, cv::Mat(), 3, 1); //harris detector
 		break;
 		
 	case 2:
@@ -275,7 +275,7 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	//printf("size of input array: %d\n", (int)corners.size());
 	//corners.reserve(numCorners);
 	
-	cornerSubPix( img, corners, Size( WIN_SIZE, WIN_SIZE ), Size( -1, -1 ), 
+	cornerSubPix( img, corners, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
 				  TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
 	#endif
 	
@@ -296,7 +296,7 @@ FeaturesInfo extractFeaturesToTrack(Mat img){
 	vector<Point2f> corners = extractCornersToTrack(img);
 
 	vector<Mat> pyramid;
-	buildOpticalFlowPyramid(img, pyramid, Size(WIN_SIZE, WIN_SIZE), 3);
+	buildOpticalFlowPyramid(img, pyramid, Size(args.winSize, args.winSize), 3);
 	
 	FeaturesInfo fi;
 	fi.features = corners;
@@ -379,25 +379,22 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
 
 	Size img_sz = img1.size();
 	Mat imgC(img_sz,1);
- 
-	int win_size = args.winSize;
-	int maxCorners = args.corners;
 
 	corners1 = extractCornersToTrack(img1);
 	//corners1 = extractCornersRecursive(img1);
 
-	corners1.reserve(maxCorners);
-	corners2.reserve(maxCorners);
+	corners1.reserve(args.corners);
+	corners2.reserve(args.corners);
 
 	//Size pyr_sz = Size( img_sz.width+8, img_sz.height/3 );
 	
 	std::vector<uchar> features_found; 
-	features_found.reserve(maxCorners);
+	features_found.reserve(args.corners);
 	std::vector<float> feature_errors; 
-	feature_errors.reserve(maxCorners);
+	feature_errors.reserve(args.corners);
     
-	calcOpticalFlowPyrLK( img1, img2, corners1, corners2, features_found, feature_errors ,
-		Size( win_size, win_size ), 5,
+	calcOpticalFlowPyrLK( img1, img2, corners1, corners2, features_found, feature_errors,
+		Size( args.winSize, args.winSize ), 5,
 		 cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3 ), 0 );
 
 	return (int) features_found.size();

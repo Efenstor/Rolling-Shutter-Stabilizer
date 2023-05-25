@@ -36,7 +36,7 @@ ITransform::ITransform(Mat img1, Mat img2, int index0, int index1){}
 
 void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent)
 {
-	for(int y=tExtent.from;y<=tExtent.to;y++)
+	for(int y=tExtent.from;y<tExtent.to;y++)
 	{
 		for(int x=frameBound.minX;x<frameBound.maxX;x++)
 		{
@@ -51,14 +51,14 @@ void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent)
 					out.data[baseIndex+c] = 0;
 				}
 				
-				if(ix < 0)
+				/*if(ix < 0)
 					frameBound.minX = max(x+1, frameBound.minX);
 				if(ix > input.cols-1)
 					frameBound.maxX = min(x-1, frameBound.maxX);
 				if(iy < 0)
 					frameBound.minY = max(y+1, frameBound.minY);
 				if(iy > input.rows-1)
-					frameBound.maxY = min(y-1, frameBound.maxY);
+					frameBound.maxY = min(y-1, frameBound.maxY);*/
 
 				//printf("frame bound now: x: %d  %d      y: %d %d\n", frameBound.minX, frameBound.maxX, frameBound.minY, frameBound.maxY);
 				
@@ -109,8 +109,8 @@ Mat ITransform::TransformImage(Mat input)
 		threadParams tp;
 		
 		tp.from = lround(frameBound.minY+(t*rowsPerThread));
-		if(t<tNum-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread-1);
-		else tp.to = frameBound.maxY-1;
+		if(t<tNum-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread);
+		else tp.to = frameBound.maxY;
 		
 		tExtent.push_back(tp);
 	}

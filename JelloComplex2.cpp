@@ -94,14 +94,12 @@ vector<float> JelloComplex2::fullFrameWelschCosts;
 JelloComplex2::JelloComplex2(TransformationMem *tm)
 {
 	AssignShiftMem(tm);
-	//AllocateShiftMem();
 }
 
 JelloComplex2::JelloComplex2(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm)
 {
 	AssignShiftMem(tm);
-	imgBound ib = {0, img1.cols, 0, img1.rows};
-	frameBound = ib;
+	frameBound = {0, img1.cols, 0, img1.rows};
 	centerX = img1.cols / 2.0;
 
 	CalcJelloTransform(img1, img2);
@@ -111,17 +109,13 @@ JelloComplex2::JelloComplex2(Mat img1, Mat img2, int index0, int index1, Transfo
 		evalTransforms(index0, index1, (char*)SHFITS_FILENAME);
 
 	#endif
-
-	//AllocateShiftMem();
 }
 
 /* *** Test constructor ***    */
 JelloComplex2::JelloComplex2(vector<Point2f> corners1, vector<Point2f> corners2, int length, TransformationMem *tm)
 {
 	AssignShiftMem(tm);
-	//params = new float[NUM_PARAMS];
-	//memset(params, 0, NUM_PARAMS*sizeof(float));
-	//AllocateShiftMem();
+	memset(params, 0, NUM_PARAMS*sizeof(float));
 	CalculateModelParameters(corners1, corners2, length, params);
 }
 
@@ -132,25 +126,13 @@ void JelloComplex2::AssignShiftMem(TransformationMem *tm)
 	shiftsY = tm->shiftsY;
 }
 
-void JelloComplex2::AllocateShiftMem(){
-	shiftsX = new float*[imgHeight];
-	shiftsY = new float*[imgHeight];
-
-	for(int row=0;row<imgHeight;row++){
-		shiftsX[row] = new float[imgWidth];
-		shiftsY[row] = new float[imgWidth];
-		memset(shiftsX[row], 0, imgWidth * sizeof(float));
-		memset(shiftsY[row], 0, imgWidth * sizeof(float));
-	}
-}
-
 void JelloComplex2::CalculateModelParameters(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* &params){
 	float * updatesModelLevel2 = new float[6];
 	float lambda = MODEL2_START_LAMBDA;
 	float startW = MODEL2_START_W;
 	float endW = MODEL2_END_W;
 	float steps = MODEL2_STEPS;
-	memset(params, 0, NUM_PARAMS);
+	memset(params, 0, NUM_PARAMS*sizeof(float));
 
 	float startCost = FullModelCostWelsch(corners1, corners2, 4, params);
 	//printf("starting cost (welsch(4)): %f\n", startCost);
@@ -1914,7 +1896,7 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	//printf("elapsed ms: %d\n", (int)elapsedMs);*/
 }
 
-void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, threadParams tExtent)
+void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent)
 {
 	for(int row=tExtent.from;row<tExtent.to;row++)
 	{
@@ -1922,17 +1904,17 @@ void JelloComplex2::CreateAbsoluteTransformThread(JelloComplex2 prevTransform, t
 		{
 			float x2, y2;
 			
-			float x = col + prevTransform.shiftsX[row][col];
-			float y = row + prevTransform.shiftsY[row][col];
+			float x = col + prevMem->shiftsX[row][col];
+			float y = row + prevMem->shiftsY[row][col];
 			TransformPoint(x, y, x2, y2);
 
-			shiftsX[row][col] = prevTransform.shiftsX[row][col] * args.jelloDecay - x2 + x;
-			shiftsY[row][col] = prevTransform.shiftsY[row][col] * args.jelloDecay - y2 + y;
+			newMem->shiftsX[row][col] = prevMem->shiftsX[row][col] * args.jelloDecay - x2 + x;
+			newMem->shiftsY[row][col] = prevMem->shiftsY[row][col] * args.jelloDecay - y2 + y;
 		}
 	}
 }
 
-void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
+void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem)
 {
 	std::vector<threadParams> tExtent;
 
@@ -1954,7 +1936,7 @@ void JelloComplex2::CreateAbsoluteTransform(JelloComplex2 prevTransform)
 	std::vector<std::thread> threads;
 	for(int t=0; t<tNum; t++)
 	{
-		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevTransform, tExtent.at(t));
+		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevMem, newMem, tExtent.at(t));
 		threads.push_back(move(newThr));
 	}
 	
