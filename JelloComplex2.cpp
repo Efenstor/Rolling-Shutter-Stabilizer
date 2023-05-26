@@ -1916,7 +1916,7 @@ void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, Tr
 
 void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem)
 {
-	std::vector<threadParams> tExtent;
+	vector<threadParams> tExtent;
 
 	// Prepare threads
 	int tNum = args.threads;
@@ -1933,7 +1933,7 @@ void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, Transfor
 	}
 	
 	// Create threads
-	std::vector<std::thread> threads;
+	vector<std::thread> threads;
 	for(int t=0; t<tNum; t++)
 	{
 		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevMem, newMem, tExtent.at(t));

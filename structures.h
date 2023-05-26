@@ -130,6 +130,7 @@ typedef struct
   int iter;
   double epsilon;
   double eigThr;
+  int lookahead;
 } arguments;
 
 typedef struct

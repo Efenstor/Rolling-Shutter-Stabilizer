@@ -34,7 +34,7 @@ ITransform::ITransform(){}
 ITransform::ITransform(Mat img1, Mat img2, int index0, int index1){}
 
 
-void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent)
+void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent, imgBound *fb)
 {
 	for(int y=tExtent.from;y<tExtent.to;y++)
 	{
@@ -51,16 +51,11 @@ void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent)
 					out.data[baseIndex+c] = 0;
 				}
 				
-				/*if(ix < 0)
-					frameBound.minX = max(x+1, frameBound.minX);
-				if(ix > input.cols-1)
-					frameBound.maxX = min(x-1, frameBound.maxX);
-				if(iy < 0)
-					frameBound.minY = max(y+1, frameBound.minY);
-				if(iy > input.rows-1)
-					frameBound.maxY = min(y-1, frameBound.maxY);*/
-
-				//printf("frame bound now: x: %d  %d      y: %d %d\n", frameBound.minX, frameBound.maxX, frameBound.minY, frameBound.maxY);
+				// Detect frame boundaries
+				if(ix < 0) fb->minX = max(x+1, fb->minX);
+				if(ix > input.cols-1) fb->maxX = min(x-1, fb->maxX);
+				if(iy < 0) fb->minY = max(y+1, fb->minY);
+				if(iy > input.rows-1) fb->maxY = min(y-1, fb->maxY);
 				
 			} else {
 				float wx = fmod(ix, 1);
@@ -102,24 +97,26 @@ Mat ITransform::TransformImage(Mat input)
 	Mat out = Mat(input.rows, input.cols, input.type(), .0);
 
 	// Prepare threads
+	std::vector<imgBound> tFrameBound;
 	int tNum = args.threads;
 	double rowsPerThread = (frameBound.maxY-frameBound.minY)/tNum;
 	for(int t=0; t<tNum; t++)
 	{
 		threadParams tp;
-		
 		tp.from = lround(frameBound.minY+(t*rowsPerThread));
 		if(t<tNum-1) tp.to = lround(frameBound.minY+(t+1)*rowsPerThread);
 		else tp.to = frameBound.maxY;
-		
 		tExtent.push_back(tp);
+		
+		imgBound fb = frameBound;
+		tFrameBound.push_back(fb);
 	}
 	
 	// Create threads
 	std::vector<std::thread> threads;
 	for(int t=0; t<tNum; t++)
 	{
-		std::thread newThr(&ITransform::TransformImageThread, this, input, out, tExtent.at(t));
+		std::thread newThr(&ITransform::TransformImageThread, this, input, out, tExtent.at(t), &tFrameBound.at(t));
 		threads.push_back(move(newThr));
 	}
 	
@@ -127,6 +124,15 @@ Mat ITransform::TransformImage(Mat input)
 	for(int t=0; t<tNum; t++)
 	{
 		threads.at(t).join();
+	}
+	
+	// Detect frame boundaries
+	for(int t=0; t<tNum; t++)
+	{
+		frameBound.minX = max(tFrameBound.at(t).minX, frameBound.minX);
+		frameBound.maxX = min(tFrameBound.at(t).maxX, frameBound.maxX);
+		frameBound.minY = max(tFrameBound.at(t).minY, frameBound.minY);
+		frameBound.maxY = min(tFrameBound.at(t).maxY, frameBound.maxY);
 	}
 
 	return out;

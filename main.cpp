@@ -67,7 +67,7 @@ void CopyMem(TransformationMem *src, TransformationMem *dst)
 }
 
 template <class TRANSFORM>
-Mat Crop(Mat input, imgBound *cropBound, imgBound newBound, Size size)
+Mat Crop(Mat input, imgBound *cropBound, vector<imgBound> frameBound, Size size, int bufSize)
 {
 	// Output frame aspect
 	double aspect = (double)size.height/size.width;
@@ -75,10 +75,24 @@ Mat Crop(Mat input, imgBound *cropBound, imgBound newBound, Size size)
 	// Smoothen transform boundaries
 	if(args.cSmooth>0)
 	{
-		cropBound->minX = lround(newBound.minX+(cropBound->minX-newBound.minX)*args.cSmooth);
-		cropBound->maxX = lround(newBound.maxX+(cropBound->maxX-newBound.maxX)*args.cSmooth);
-		cropBound->minY = lround(newBound.minY+(cropBound->minY-newBound.minY)*args.cSmooth);
-		cropBound->maxY = lround(newBound.maxY+(cropBound->maxY-newBound.maxY)*args.cSmooth);
+		imgBound fb = frameBound.at(0);   // Current frame
+		cropBound->minX = lround(fb.minX+(cropBound->minX-fb.minX)*args.cSmooth);
+		cropBound->maxX = lround(fb.maxX+(cropBound->maxX-fb.maxX)*args.cSmooth);
+		cropBound->minY = lround(fb.minY+(cropBound->minY-fb.minY)*args.cSmooth);
+		cropBound->maxY = lround(fb.maxY+(cropBound->maxY-fb.maxY)*args.cSmooth);
+		// Add lookahead
+		if(bufSize>1)
+		{
+			//for(int i=bufSize-1; i>0; i--)
+			for(int i=1; i<bufSize; i++)
+			{
+				imgBound fb = frameBound.at(i);   // Future frame
+				cropBound->minX = lround(fb.minX+(cropBound->minX-fb.minX)*args.cSmooth);
+				cropBound->maxX = lround(fb.maxX+(cropBound->maxX-fb.maxX)*args.cSmooth);
+				cropBound->minY = lround(fb.minY+(cropBound->minY-fb.minY)*args.cSmooth);
+				cropBound->maxY = lround(fb.maxY+(cropBound->maxY-fb.maxY)*args.cSmooth);
+			}
+		}
 	}
 	
 	// All values
@@ -117,9 +131,9 @@ Mat Crop(Mat input, imgBound *cropBound, imgBound newBound, Size size)
 	
 	// Limit (crash-proofing)
 	/*if(minX<0) minX = 0;
-	if(maxX>size.width-1) maxX = size.width-1;
+	if(maxX>size.width) maxX = size.width;
 	if(minY<0) minY = 0;
-	if(maxY>size.height-1) maxY = size.height-1;*/
+	if(maxY>size.height) maxY = size.height;*/
 	
 	// Crop and upscale
 	Rect rCrop(minX, minY, maxX-minX, maxY-minY);
@@ -174,6 +188,12 @@ void evalTransformStream(char *inFileName, char *outFileName)
     imgBound cropBound;
     capture.set(CAP_PROP_POS_FRAMES, 0);
     
+    // Output mats
+    int outBufSize = 1;
+    if(!args.noCrop && args.cSmooth>0) outBufSize += args.lookahead;
+    vector<Mat> out;
+    vector<imgBound> frameBound;
+    
     // Test marker size
     int testMarkerSize;
 	if(width>height) testMarkerSize = lround((double)width*TEST_MARKER_SIZE);
@@ -223,30 +243,40 @@ void evalTransformStream(char *inFileName, char *outFileName)
 				{
 					// Create a transform matrix using previous the frame and the current
 					TRANSFORM t = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
-					//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
 					t.CreateAbsoluteTransform(&prevMem, &newMem);
-					//printf("%f\n", t.shiftsX[100][100]);
 
 					// Transform the frame
-					Mat out = t.TransformImage(frame);
+					Mat o = t.TransformImage(frame);
+					imgBound fb = t.frameBound;
+					if(framesRead==2) cropBound = t.frameBound;
+					out.push_back(o);
+					frameBound.push_back(fb);
 
-					// Save the frame to the file
-					if(!args.noCrop)
+					// Save or continue
+					if(framesRead>outBufSize)
 					{
-						// Cropped
-						if(framesRead==2) cropBound = t.frameBound;  // First frame
-						Mat outCropped = Crop<TRANSFORM>(out, &cropBound, t.frameBound, size);
-						outputVideo.write(outCropped);
-					} else {
-						// Full frame
-						outputVideo.write(out);
+						// Buffer is full
+						if(!args.noCrop)
+						{
+							// Crop
+							Mat outCropped = Crop<TRANSFORM>(out.at(0), &cropBound, frameBound, size, outBufSize);
+							outputVideo.write(outCropped);
+						} else {
+							// Not cropped
+							outputVideo.write(out.at(0));
+						}
+
+						// Shift buffer
+						out.erase(out.begin());
+						frameBound.erase(frameBound.begin());
 					}
-					
+
+					// Shift params
 					CopyMem<TRANSFORM>(&newMem, &prevMem);
 				}
 			}
 			
-			// Shift
+			// Shift grey mats
 			if(i>0) greyInput[1].copyTo(greyInput[0]);
 			
 			// Calculate processing fps
@@ -257,6 +287,17 @@ void evalTransformStream(char *inFileName, char *outFileName)
 			}
         }
     }
+
+	// Flushing the buffer
+	printf("\nFlusing the frame buffer");
+	fflush(stdout);		// Make printf work immediately
+	for(int i=0; i<outBufSize-1; i++)
+	{
+		// Crop
+		Mat outCropped = Crop<TRANSFORM>(out.at(0), &cropBound, frameBound, size, outBufSize-1-i);
+		out.erase(out.begin());
+		outputVideo.write(outCropped);
+	}
 
     // Analyze accuracies
     //TRANSFORM::analyzeTransformAccuracies();
@@ -629,6 +670,7 @@ static struct argp_option options[] = {
 	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=" JELLO_DECAY_S, 1},
 	{"csmooth",		'c',	"float 0..1",		0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 1},
 	{"zoom",		'z',	"float .01..100",	0, "Additional zoom. Default=" ZOOM_S, 1},
+	{"clooka",		'l',	"0..100",			0, "Crop lookahead (frames). Default=" LOOKAHEAD_S, 1},
 //	{"method",		'm',	"1-7",				0, "Processing method (see below). Default=" METHOD_S, 1},
 	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=" QLEVEL_S, 2},
 	{"nosubpix",	604,	0,					0, "Don't do corner subpixel interpolation", 2},
@@ -684,7 +726,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			args->noCrop = true;
 			break;
 			
-		case 'a':
+		case 'c':
 			// Adaptive crop smoothness
 			if(checkNumberArg(arg, 0, 1, true)) {
 				printf("Crop smoothness should be a floating-point number from 0 to 1.\n");
@@ -718,6 +760,15 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 				exit(1);
 			}
 			args->zoom = atof(arg);
+			break;
+
+		case 'l':
+			// Crop lookahead
+			if(checkNumberArg(arg, 0, 100, false)) {
+				printf("Number of frames for crop lookahead should be from 1 to 100.\n");
+				exit(1);
+			}
+			args->lookahead = atoi(arg);
 			break;
 
 		case 500:
@@ -877,6 +928,7 @@ int main(int argc, char* argv[])
 	args.iter = ITER;
 	args.epsilon = EPSILON;
 	args.eigThr = EIG_THR;
+	args.lookahead = LOOKAHEAD;
 	
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

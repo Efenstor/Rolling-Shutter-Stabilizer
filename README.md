@@ -17,16 +17,20 @@ Read more about the problem [here](https://www.gnu.org/licenses/license-list.htm
 
 ### Library requirements:
 
-* OpenCV 4.5 or later
-* Armadillo 10 or later (linear algebra library)
-* g++ 10 or later
+* *OpenCV 4.5* or later
+* *Armadillo 10* or later (linear algebra library)
+* *g++ 10* or later
 
 ### Compilation:
 
-make
+*make*
 
 ### Basic usage:
 
 *rsvs -i <input_file> -o <output_file>*
 
 Run *rsvs -h* for full help.
+
+### Notes:
+
+Currently the output codec is hardcoded to MJPEG.
