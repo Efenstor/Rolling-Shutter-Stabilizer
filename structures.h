@@ -112,18 +112,24 @@ typedef struct
 typedef struct
 {
   char *inFileName, *outFileName;
-  int pass, method;
+  int method;
   int threads;
   bool warnings;
   int corners;
   int cornerRows;
   int cornerCols;
+  bool noSubpix;
+  bool test;
   int winSize;
   int noCrop;
   double cSmooth;
   double zoom;
-  double jelloDecay;
+  float jelloDecay;
   double qualityLevel;
+  int maxLevel;
+  int iter;
+  double epsilon;
+  double eigThr;
 } arguments;
 
 typedef struct

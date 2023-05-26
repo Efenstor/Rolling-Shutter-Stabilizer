@@ -28,7 +28,6 @@
 #include "opencv2/imgproc/imgproc_c.h"
 
 #define VERSION "0.5"
-#define PASS1EXT ".pass1"
 
 using namespace std;
 using namespace cv;
@@ -174,6 +173,12 @@ void evalTransformStream(char *inFileName, char *outFileName)
     Mat greyInput[2];
     imgBound cropBound;
     capture.set(CAP_PROP_POS_FRAMES, 0);
+    
+    // Test marker size
+    int testMarkerSize;
+	if(width>height) testMarkerSize = lround((double)width*TEST_MARKER_SIZE);
+	else testMarkerSize = lround((double)height*TEST_MARKER_SIZE);
+	if(testMarkerSize<1) testMarkerSize = 1;
 
 	// Read and process
 	double procFps = -1;
@@ -200,32 +205,45 @@ void evalTransformStream(char *inFileName, char *outFileName)
 			cvtColor(frame, greyMat, CV_BGR2GRAY);
 			if(i>0) greyMat.copyTo(greyInput[1]);
 			else greyMat.copyTo(greyInput[0]);
-			
-			// Process if more than 1 frame is read
-			if(framesRead>1)
+
+			// Process or test mode
+			if(args.test)
 			{
-				// Create a transform matrix using previous the frame and the current
-				TRANSFORM t = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
-				//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
-				t.CreateAbsoluteTransform(&prevMem, &newMem);
-				//printf("%f\n", t.shiftsX[100][100]);
-
-				// Transform the frame
-				Mat out = t.TransformImage(frame);
-
-				// Save the frame to the file
-				if(!args.noCrop)
+				// Test mode
+				vector<Point2f> corners = extractCornersToTrack(greyInput[0]);
+				for(int i=0;i<(int)corners.size();i++)
 				{
-					// Cropped
-					if(framesRead==2) cropBound = t.frameBound;  // First frame
-					Mat outCropped = Crop<TRANSFORM>(out, &cropBound, t.frameBound, size);
-					outputVideo.write(outCropped);
-				} else {
-					// Full frame
-					outputVideo.write(out);
+					circle(frame, corners[i], testMarkerSize, Scalar(0, 0, 0), 1);
+					circle(frame, corners[i], testMarkerSize-1, Scalar(255, 255, 255), FILLED);
 				}
-				
-				CopyMem<TRANSFORM>(&newMem, &prevMem);
+				outputVideo.write(frame);
+			} else {
+				// Process if more than 1 frame is read
+				if(framesRead>1)
+				{
+					// Create a transform matrix using previous the frame and the current
+					TRANSFORM t = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
+					//printf("%f %f %f\n", t.params[0], t.params[1], t.params[2]);
+					t.CreateAbsoluteTransform(&prevMem, &newMem);
+					//printf("%f\n", t.shiftsX[100][100]);
+
+					// Transform the frame
+					Mat out = t.TransformImage(frame);
+
+					// Save the frame to the file
+					if(!args.noCrop)
+					{
+						// Cropped
+						if(framesRead==2) cropBound = t.frameBound;  // First frame
+						Mat outCropped = Crop<TRANSFORM>(out, &cropBound, t.frameBound, size);
+						outputVideo.write(outCropped);
+					} else {
+						// Full frame
+						outputVideo.write(out);
+					}
+					
+					CopyMem<TRANSFORM>(&newMem, &prevMem);
+				}
 			}
 			
 			// Shift
@@ -610,16 +628,21 @@ static struct argp_option options[] = {
 	{"nocrop",		'n',	0,					0, "Do not crop output", 1},
 	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=" JELLO_DECAY_S, 1},
 	{"csmooth",		'c',	"float 0..1",		0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 1},
-	{"zoom",		'z',	"float .1..100",	0, "Additional zoom. Default=" ZOOM_S, 1},
-	{"winsize",		'w',	"1..100000",		0, "Search window size. Default=" WIN_SIZE_S, 1},
-//	{"pass",		'p',	"1 or 2",			0, "Do only selected processing pass", 0},
-//	{"method",		'm',	"1-7",				0, "Processing method (see the list below)", 1},
-	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 2},
-	{"tcols",		600,	"0..1000",			0, "Tracker corner columns. Default=" CORNER_COLS_S, 2},
-	{"trows",		601,	"0..1000",			0, "Tracker corner rows. Default=" CORNER_ROWS_S, 2},
-	{"corners",		602,	"1..100000",		0, "Max number of tracker corners. Default=" NUM_CORNERS_S, 2},
+	{"zoom",		'z',	"float .01..100",	0, "Additional zoom. Default=" ZOOM_S, 1},
+//	{"method",		'm',	"1-7",				0, "Processing method (see below). Default=" METHOD_S, 1},
 	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=" QLEVEL_S, 2},
-	{"warnings",	501,	0,					0, "Show all warnings/errors", 2},
+	{"nosubpix",	604,	0,					0, "Don't do corner subpixel interpolation", 2},
+	{"maxlevel",	605,	"0..100",			0, "Maximum pyramid level. Default=" MAX_LEVEL_S, 2},
+	{"winsize",		'w',	"1..100000",		0, "Search window size. Default=" WIN_SIZE_S, 2},
+	{"iter",		606,	"1..1000",			0, "Search iterations. Default=" ITER_S, 2},
+	{"stopacc",		607,	"float 0..1",		0, "Max accuracy to stop search. Default=" EPSILON_S, 2},
+	{"errthr",		608,	"float 0..1",		0, "Search errors filter threshold. Default=" EIG_THR_S, 2},
+	{"corners",		602,	"500..100000",		0, "Max number of corners. Default=" NUM_CORNERS_S, 2},
+	{"tcols",		600,	"0..1000",			0, "Tracker corner columns. Default=" CORNER_COLS_S, 3},
+	{"trows",		601,	"0..1000",			0, "Tracker corner rows. Default=" CORNER_ROWS_S, 3},
+	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 4},
+	{"warnings",	501,	0,					0, "Show all warnings/errors", 4},
+	{"test",		502,	0,					0, "Test mode (show corners, etc.)", 4},
 /*	{0,				0,		0,					OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
 		"2 = JelloComplex1\n"
@@ -645,15 +668,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 'o':
 			// Output file name
 			args->outFileName = arg;
-			break;
-			
-		case 'p':
-			// Pass
-			if(checkNumberArg(arg, 1, 2, false)) {
-				printf("Pass should be either 1 or 2.\n");
-				exit(1);
-			}
-			args->pass = atoi(arg);
 			break;
 			
 		case 'm':
@@ -699,7 +713,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case 'z':
 			// Zoom
-			if(checkNumberArg(arg, .1, 100, true)) {
+			if(checkNumberArg(arg, .01, 100, true)) {
 				printf("Zoom should be a floating-point number from .1 to 100.\n");
 				exit(1);
 			}
@@ -718,6 +732,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 501:
 			// Show warnings
 			args->warnings = true;
+			break;
+
+		case 502:
+			// Test mode
+			args->test = true;
 			break;
 			
 		case 600:
@@ -740,8 +759,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case 602:
 			// Corners
-			if(checkNumberArg(arg, 1, 100000, false)) {
-				printf("Number of corners should be from 1 to 100000.\n");
+			if(checkNumberArg(arg, 500, 100000, false)) {
+				printf("Number of corners should be from 500 to 100000.\n");
 				exit(1);
 			}
 			args->corners = atoi(arg);
@@ -754,6 +773,47 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 				exit(1);
 			}
 			args->qualityLevel = atof(arg);
+			break;
+		
+		case 604:
+			// Corner subpix
+			args->noSubpix = true;
+			break;
+			
+		case 605:
+			// Optical flow pyramid levels
+			if(checkNumberArg(arg, 0, 100, false)) {
+				printf("Optical flow maximum pyramid level should be from 0 to 100.\n");
+				exit(1);
+			}
+			args->maxLevel = atoi(arg);
+			break;
+
+		case 606:
+			// Iterations
+			if(checkNumberArg(arg, 1, 1000, false)) {
+				printf("Search iterations number should be from 1 to 1000.\n");
+				exit(1);
+			}
+			args->iter = atoi(arg);
+			break;
+
+		case 607:
+			// Epsilon
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Max accuracy should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->epsilon = atof(arg);
+			break;
+
+		case 608:
+			// Eigen threshold
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Eigen threshold should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->eigThr = atof(arg);
 			break;
 
 		case 'h':
@@ -799,7 +859,6 @@ int main(int argc, char* argv[])
 	// Defaults
 	args.inFileName = NULL;
 	args.outFileName = NULL;
-	args.pass = 0;
 	args.method = METHOD;
 	args.threads = -1;
 	args.warnings = false;
@@ -807,12 +866,18 @@ int main(int argc, char* argv[])
 	args.corners = NUM_CORNERS;
 	args.cornerCols = CORNER_COLS;
 	args.cornerRows = CORNER_ROWS;
+	args.noSubpix = false;
+	args.test = false;
 	args.noCrop = false;
 	args.cSmooth = CROP_SMOOTH;
 	args.jelloDecay = JELLO_DECAY;
 	args.zoom = ZOOM;
 	args.qualityLevel = QLEVEL;
-
+	args.maxLevel = MAX_LEVEL;
+	args.iter = ITER;
+	args.epsilon = EPSILON;
+	args.eigThr = EIG_THR;
+	
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;
 
@@ -836,7 +901,6 @@ int main(int argc, char* argv[])
 	{
 		case 1:
 			evalTransformStream<JelloComplex2>(args.inFileName, args.outFileName);
-			//evalTransformPass2<JelloComplex2>(args.inFileName, args.outFileName, tJelloComplex2);
 			//evalTransform<JelloComplex2>(args.inFileName, args.outFileName);
 			break;
 

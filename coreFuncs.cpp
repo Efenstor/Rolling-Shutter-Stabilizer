@@ -169,13 +169,11 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 		int depth = (int)log2(args.corners / numCorners)/2;
 		finalStageCounts[depth] ++;
 
-		 if(result.size() > 0){
-
-			#if DO_CORNER_SUBPIX == 1
-				cornerSubPix( img, result, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
-							  TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
-			#endif
-		}
+		 if(result.size()>0 && !args.noSubpix)
+		 {
+			cornerSubPix( img, result, Size( args.winSize, args.winSize ), Size( -1, -1 ),
+				TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
+		 }
 	}
 
 	for(int i=0;i<(int)result.size();i++){
@@ -271,24 +269,12 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 		break;
 	}
 	
-	#if DO_CORNER_SUBPIX == 1
-	//printf("size of input array: %d\n", (int)corners.size());
-	//corners.reserve(numCorners);
+	if(!args.noSubpix)
+	{
+		cornerSubPix(img, corners, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
+			TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
+	}
 	
-	cornerSubPix( img, corners, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
-				  TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
-	#endif
-	
-	if(SHOW_CORNERS)
-        {
-            for(int i=0;i<(int)corners.size();i++)
-            {
-                    circle(img, corners[i], 2, Scalar(255, 0, 0));	
-            }
-            imshow("Window1", img); 
-            waitKey(10000);
-            
-        }
 	return corners;
 }
 
@@ -394,8 +380,8 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
 	feature_errors.reserve(args.corners);
     
 	calcOpticalFlowPyrLK( img1, img2, corners1, corners2, features_found, feature_errors,
-		Size( args.winSize, args.winSize ), 5,
-		 cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3 ), 0 );
+		Size( args.winSize, args.winSize ), args.maxLevel,
+		cvTermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ), 0, args.eigThr );
 
 	return (int) features_found.size();
 }
