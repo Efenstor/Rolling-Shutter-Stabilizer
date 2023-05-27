@@ -36,6 +36,9 @@ ITransform::ITransform(Mat img1, Mat img2, int index0, int index1){}
 
 void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent, imgBound *fb)
 {
+	float cx = (frameBound.maxX-frameBound.minX)/2.0;
+	float cy = (frameBound.maxY-frameBound.minY)/2.0;
+	
 	for(int y=tExtent.from;y<tExtent.to;y++)
 	{
 		for(int x=frameBound.minX;x<frameBound.maxX;x++)
@@ -43,10 +46,15 @@ void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent, 
 			float ix, iy;
 			TransformPointAbs(x, y, ix, iy);
 
+			// Zoom
+			ix = (ix-cx)/args.zoom+cx;
+			iy = (iy-cy)/args.zoom+cy;
+
 			int baseIndex = out.step[0]*(y) + out.step[1]* (x);
 
-			if(ix < 0 || ix > (input.cols-1) || iy < 0 || iy > (input.rows-1)){
-
+			if(ix < 0 || ix > (input.cols-1) || iy < 0 || iy > (input.rows-1))
+			{
+				// Pixel is beyond boundaries
 				for(int c = 0; c<(int)out.step[1];c++){
 					out.data[baseIndex+c] = 0;
 				}
@@ -56,8 +64,8 @@ void ITransform::TransformImageThread(Mat input, Mat out, threadParams tExtent, 
 				if(ix > input.cols-1) fb->maxX = min(x-1, fb->maxX);
 				if(iy < 0) fb->minY = max(y+1, fb->minY);
 				if(iy > input.rows-1) fb->maxY = min(y-1, fb->maxY);
-				
 			} else {
+				// Pixel is inside boundaries
 				float wx = fmod(ix, 1);
 				float wy = fmod(iy, 1);
 

@@ -100,6 +100,13 @@ typedef struct
 	int maxY;
 } imgBound;
 
+typedef struct
+{
+	double minX;
+	double maxX;
+	double minY;
+	double maxY;
+} cropBound;
 
 typedef struct
 {
@@ -131,6 +138,7 @@ typedef struct
   double epsilon;
   double eigThr;
   int lookahead;
+  double lookaheadPri;
 } arguments;
 
 typedef struct

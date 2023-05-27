@@ -67,7 +67,7 @@ void CopyMem(TransformationMem *src, TransformationMem *dst)
 }
 
 template <class TRANSFORM>
-Mat Crop(Mat input, imgBound *cropBound, vector<imgBound> frameBound, Size size, int bufSize)
+Mat Crop(Mat input, cropBound *cBound, vector<imgBound> frameBound, Size size, int bufSize)
 {
 	// Output frame aspect
 	double aspect = (double)size.height/size.width;
@@ -75,43 +75,44 @@ Mat Crop(Mat input, imgBound *cropBound, vector<imgBound> frameBound, Size size,
 	// Smoothen transform boundaries
 	if(args.cSmooth>0)
 	{
-		imgBound fb = frameBound.at(0);   // Current frame
-		cropBound->minX = lround(fb.minX+(cropBound->minX-fb.minX)*args.cSmooth);
-		cropBound->maxX = lround(fb.maxX+(cropBound->maxX-fb.maxX)*args.cSmooth);
-		cropBound->minY = lround(fb.minY+(cropBound->minY-fb.minY)*args.cSmooth);
-		cropBound->maxY = lround(fb.maxY+(cropBound->maxY-fb.maxY)*args.cSmooth);
-		// Add lookahead
-		if(bufSize>1)
+		// Past frames
+		cropBound past;
+		imgBound fb = frameBound.at(0);
+		past.minX = fb.minX+(cBound->minX-fb.minX)*args.cSmooth;
+		past.maxX = fb.maxX+(cBound->maxX-fb.maxX)*args.cSmooth;
+		past.minY = fb.minY+(cBound->minY-fb.minY)*args.cSmooth;
+		past.maxY = fb.maxY+(cBound->maxY-fb.maxY)*args.cSmooth;
+		
+		// Future frames
+		if(bufSize>1 && args.lookaheadPri>0)
 		{
-			//for(int i=bufSize-1; i>0; i--)
-			for(int i=1; i<bufSize; i++)
+			cropBound future;
+			memcpy(&future, &past, sizeof(cropBound));
+			//for(int i=bufSize-1; i>=0; i--)
+			for(int i=0; i<bufSize; i++)
 			{
-				imgBound fb = frameBound.at(i);   // Future frame
-				cropBound->minX = lround(fb.minX+(cropBound->minX-fb.minX)*args.cSmooth);
-				cropBound->maxX = lround(fb.maxX+(cropBound->maxX-fb.maxX)*args.cSmooth);
-				cropBound->minY = lround(fb.minY+(cropBound->minY-fb.minY)*args.cSmooth);
-				cropBound->maxY = lround(fb.maxY+(cropBound->maxY-fb.maxY)*args.cSmooth);
+				imgBound fb = frameBound.at(i);
+				future.minX = fb.minX+(future.minX-fb.minX)*args.cSmooth;
+				future.maxX = fb.maxX+(future.maxX-fb.maxX)*args.cSmooth;
+				future.minY = fb.minY+(future.minY-fb.minY)*args.cSmooth;
+				future.maxY = fb.maxY+(future.maxY-fb.maxY)*args.cSmooth;
 			}
+			cBound->minX = past.minX+(future.minX-past.minX)*args.lookaheadPri;
+			cBound->maxX = past.maxX+(future.maxX-past.maxX)*args.lookaheadPri;
+			cBound->minY = past.minY+(future.minY-past.minY)*args.lookaheadPri;
+			cBound->maxY = past.maxY+(future.maxY-past.maxY)*args.lookaheadPri;
+		} else {
+			memcpy(cBound, &past, sizeof(cropBound));
 		}
 	}
 	
 	// All values
-	int minX = cropBound->minX;
-	int maxX = cropBound->maxX;
-	int minY = cropBound->minY;
-	int maxY = cropBound->maxY;
+	int minX = cBound->minX;
+	int maxX = cBound->maxX;
+	int minY = cBound->minY;
+	int maxY = cBound->maxY;
 	int width = maxX-minX+1;
 	int height = maxY-minY+1;
-
-	// Zoom
-	int zoomOffX = (width-width/args.zoom)/2;
-	int zoomOffY = (height-height/args.zoom)/2;
-	minX += zoomOffX;
-	maxX -= zoomOffX;
-	minY += zoomOffY;
-	maxY -= zoomOffY;
-	width = maxX-minX+1;
-	height = maxY-minY+1;
 	
 	// Conform to aspect
 	int pWidth = (int)(height/aspect);		// Proposed width keeping height
@@ -138,7 +139,7 @@ Mat Crop(Mat input, imgBound *cropBound, vector<imgBound> frameBound, Size size,
 	// Crop and upscale
 	Rect rCrop(minX, minY, maxX-minX, maxY-minY);
 	Mat out = Mat(size, input.type());
-	cv::resize(Mat(input, rCrop), out, size, 0, 0, INTER_CUBIC);
+	cv::resize(Mat(input, rCrop), out, size, 0, 0, INTER_LANCZOS4);
 	
 	return out;
 }
@@ -185,7 +186,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
     
     // Init others
     Mat greyInput[2];
-    imgBound cropBound;
+    cropBound cBound;
     capture.set(CAP_PROP_POS_FRAMES, 0);
     
     // Output mats
@@ -248,7 +249,14 @@ void evalTransformStream(char *inFileName, char *outFileName)
 					// Transform the frame
 					Mat o = t.TransformImage(frame);
 					imgBound fb = t.frameBound;
-					if(framesRead==2) cropBound = t.frameBound;
+					if(framesRead==2)
+					{
+						// Initialize crop bound for past frames
+						cBound.minX = t.frameBound.minX;
+						cBound.maxX = t.frameBound.maxX;
+						cBound.minY = t.frameBound.minY;
+						cBound.maxY = t.frameBound.maxY;
+					}
 					out.push_back(o);
 					frameBound.push_back(fb);
 
@@ -259,7 +267,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
 						if(!args.noCrop)
 						{
 							// Crop
-							Mat outCropped = Crop<TRANSFORM>(out.at(0), &cropBound, frameBound, size, outBufSize);
+							Mat outCropped = Crop<TRANSFORM>(out.at(0), &cBound, frameBound, size, outBufSize);
 							outputVideo.write(outCropped);
 						} else {
 							// Not cropped
@@ -294,7 +302,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
 	for(int i=0; i<outBufSize-1; i++)
 	{
 		// Crop
-		Mat outCropped = Crop<TRANSFORM>(out.at(0), &cropBound, frameBound, size, outBufSize-1-i);
+		Mat outCropped = Crop<TRANSFORM>(out.at(0), &cBound, frameBound, size, outBufSize-1-i);
 		out.erase(out.begin());
 		outputVideo.write(outCropped);
 	}
@@ -657,7 +665,8 @@ const char *argp_program_version = VERSION;
 const char *argp_program_bug_address = "https://github.com/Efenstor/Rolling-Shutter-Video-Stabilization/issues";
 
 static char doc[] = "\nRolling Shutter Video Stabilization v" VERSION "\n"
-"Algorithms and the OpenCV implementation (C) 2014 Nick Stupich.\n";
+"Original code Copyright 2014 Nick Stupich.\n"
+"All the later commits are Copyleft.\n";
 
 static char args_doc[] = "-i <input_file> -o <output_file>";
 
@@ -670,7 +679,8 @@ static struct argp_option options[] = {
 	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=" JELLO_DECAY_S, 1},
 	{"csmooth",		'c',	"float 0..1",		0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 1},
 	{"zoom",		'z',	"float .01..100",	0, "Additional zoom. Default=" ZOOM_S, 1},
-	{"clooka",		'l',	"0..100",			0, "Crop lookahead (frames). Default=" LOOKAHEAD_S, 1},
+	{"cla",			'l',	"0..100",			0, "Crop lookahead frames. Default=" LOOKAHEAD_S, 1},
+	{"clapri",		'p',	"float 0..1",		0, "Crop lookahead priority. Default=" LOOKAHEAD_PRI_S, 1},
 //	{"method",		'm',	"1-7",				0, "Processing method (see below). Default=" METHOD_S, 1},
 	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=" QLEVEL_S, 2},
 	{"nosubpix",	604,	0,					0, "Don't do corner subpixel interpolation", 2},
@@ -680,8 +690,8 @@ static struct argp_option options[] = {
 	{"stopacc",		607,	"float 0..1",		0, "Max accuracy to stop search. Default=" EPSILON_S, 2},
 	{"errthr",		608,	"float 0..1",		0, "Search errors filter threshold. Default=" EIG_THR_S, 2},
 	{"corners",		602,	"500..100000",		0, "Max number of corners. Default=" NUM_CORNERS_S, 2},
-	{"tcols",		600,	"0..1000",			0, "Tracker corner columns. Default=" CORNER_COLS_S, 3},
-	{"trows",		601,	"0..1000",			0, "Tracker corner rows. Default=" CORNER_ROWS_S, 3},
+//	{"tcols",		600,	"0..1000",			0, "Tracker corner columns. Default=" CORNER_COLS_S, 3},
+//	{"trows",		601,	"0..1000",			0, "Tracker corner rows. Default=" CORNER_ROWS_S, 3},
 	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 4},
 	{"warnings",	501,	0,					0, "Show all warnings/errors", 4},
 	{"test",		502,	0,					0, "Test mode (show corners, etc.)", 4},
@@ -769,6 +779,15 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 				exit(1);
 			}
 			args->lookahead = atoi(arg);
+			break;
+
+		case 'p':
+			// Crop lookahead priority
+			if(checkNumberArg(arg, 0, 1, true)) {
+				printf("Crop lookahead priority should be a floating-point number from 0 to 1.\n");
+				exit(1);
+			}
+			args->lookaheadPri = atof(arg);
 			break;
 
 		case 500:
@@ -929,6 +948,7 @@ int main(int argc, char* argv[])
 	args.epsilon = EPSILON;
 	args.eigThr = EIG_THR;
 	args.lookahead = LOOKAHEAD;
+	args.lookaheadPri = LOOKAHEAD_PRI;
 	
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

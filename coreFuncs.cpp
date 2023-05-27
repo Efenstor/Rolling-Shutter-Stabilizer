@@ -112,7 +112,7 @@ int *finalStageCounts;
 vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f offset){
 	vector<Point2f> result;
 
-	goodFeaturesToTrack(img, result, numCorners, args.qualityLevel, minDistance,cv::Mat());
+	goodFeaturesToTrack(img, result, numCorners, args.qualityLevel, minDistance);
 
 	int counts[4];
 	memset(counts, 0, 4*sizeof(int));
@@ -172,7 +172,7 @@ vector<Point2f> extractCornersRecursiveInner(Mat img, int numCorners, Point2f of
 		 if(result.size()>0 && !args.noSubpix)
 		 {
 			cornerSubPix( img, result, Size( args.winSize, args.winSize ), Size( -1, -1 ),
-				TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
+				TermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ) );
 		 }
 	}
 
@@ -203,7 +203,8 @@ void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corne
 			
 			Point2f offset(xLow, yLow);
 			vector<cv::Point2f> segmentCorners;
-			goodFeaturesToTrack(m, segmentCorners, numCorners/(args.cornerCols*args.cornerRows), args.qualityLevel, minDistance,cv::Mat());
+			goodFeaturesToTrack(m, segmentCorners, numCorners/(args.cornerCols*args.cornerRows),
+					args.qualityLevel, minDistance);
 			for(int i=0; i<(int)segmentCorners.size(); i++)
 			{
 				corners.push_back(segmentCorners[i] + offset);
@@ -239,10 +240,10 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	// Find features to track
 	int type = 2;
 	switch(type){
-	case 0: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance, cv::Mat());
+	case 0: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance);
 		break;
 		
-	case 1: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance, cv::Mat(), 3, 1); //harris detector
+	case 1: goodFeaturesToTrack(img, corners, numCorners, args.qualityLevel, minDistance, noArray(), 3, true); //harris detector
 		break;
 		
 	case 2:
@@ -272,7 +273,7 @@ vector<Point2f> extractCornersToTrack(Mat img, int numCorners)
 	if(!args.noSubpix)
 	{
 		cornerSubPix(img, corners, Size( args.winSize, args.winSize ), Size( -1, -1 ), 
-			TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03 ) );
+			TermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ) );
 	}
 	
 	return corners;
@@ -381,7 +382,7 @@ int GetPointsToTrack(Mat img1, Mat img2, vector<Point2f> &corners1, vector<Point
     
 	calcOpticalFlowPyrLK( img1, img2, corners1, corners2, features_found, feature_errors,
 		Size( args.winSize, args.winSize ), args.maxLevel,
-		cvTermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ), 0, args.eigThr );
+		TermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ), 0, args.eigThr );
 
 	return (int) features_found.size();
 }

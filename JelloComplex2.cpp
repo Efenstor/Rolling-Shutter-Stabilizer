@@ -1898,18 +1898,21 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 
 void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent)
 {
+
 	for(int row=tExtent.from;row<tExtent.to;row++)
 	{
 		for(int col=0;col<imgWidth;col++)
 		{
 			float x2, y2;
 			
+			// Transform
 			float x = col + prevMem->shiftsX[row][col];
 			float y = row + prevMem->shiftsY[row][col];
 			TransformPoint(x, y, x2, y2);
 
+			// Covert to shifts with inertia
 			newMem->shiftsX[row][col] = prevMem->shiftsX[row][col] * args.jelloDecay - x2 + x;
-			newMem->shiftsY[row][col] = prevMem->shiftsY[row][col] * args.jelloDecay - y2 + y;
+			newMem->shiftsY[row][col] = prevMem->shiftsY[row][col] * args.jelloDecay - y2 + y;			
 		}
 	}
 }
