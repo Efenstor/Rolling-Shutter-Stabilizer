@@ -21,8 +21,8 @@
 #define CORNER_ROWS						15
 #define CORNER_ROWS_S					"15"
 
-#define CROP_SMOOTH						.9
-#define CROP_SMOOTH_S					".9"
+#define CROP_SMOOTH						.95
+#define CROP_SMOOTH_S					".95"
 
 #define ZOOM							1.1
 #define ZOOM_S							"1.1"

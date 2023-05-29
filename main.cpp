@@ -75,11 +75,20 @@ Mat Crop(Mat input, cropBound *cBound, imgBound frameBound, Size size)
 	// Smoothen transform boundaries
 	if(args.cSmooth>0)
 	{
-		cBound->minX = frameBound.minX+(cBound->minX-frameBound.minX)*args.cSmooth;
-		cBound->maxX = frameBound.maxX+(cBound->maxX-frameBound.maxX)*args.cSmooth;
-		cBound->minY = frameBound.minY+(cBound->minY-frameBound.minY)*args.cSmooth;
-		cBound->maxY = frameBound.maxY+(cBound->maxY-frameBound.maxY)*args.cSmooth;
+		// Dynamic decay
+		float maxShift = fmax(size.width * args.djdShift, size.height * args.djdShift);
+		int width1 = cBound->maxX-cBound->minX;
+		int width2 = frameBound.maxX-frameBound.minX;
+		int height1 = cBound->maxY-cBound->minY;
+		int height2 = frameBound.maxY-frameBound.minY;
+		double cSmoothX = (1 - pow(fmin( abs(width1-width2) / maxShift, 1), args.djdLinear)) * args.cSmooth;
+		double cSmoothY = (1 - pow(fmin( abs(height1-height2) / maxShift, 1), args.djdLinear)) * args.cSmooth;
+		cBound->minX = frameBound.minX+(cBound->minX-frameBound.minX)*cSmoothX;
+		cBound->maxX = frameBound.maxX+(cBound->maxX-frameBound.maxX)*cSmoothX;
+		cBound->minY = frameBound.minY+(cBound->minY-frameBound.minY)*cSmoothY;
+		cBound->maxY = frameBound.maxY+(cBound->maxY-frameBound.maxY)*cSmoothY;
 	} else {
+		// No decay
 		cBound->minX = frameBound.minX;
 		cBound->maxX = frameBound.maxX;
 		cBound->minY = frameBound.minY;
