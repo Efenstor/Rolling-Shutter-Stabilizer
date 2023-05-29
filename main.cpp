@@ -67,7 +67,7 @@ void CopyMem(TransformationMem *src, TransformationMem *dst)
 }
 
 template <class TRANSFORM>
-Mat Crop(Mat input, cropBound *cBound, vector<imgBound> frameBound, Size size, int bufSize)
+Mat Crop(Mat input, cropBound *cBound, imgBound frameBound, Size size)
 {
 	// Output frame aspect
 	double aspect = (double)size.height/size.width;
@@ -75,35 +75,15 @@ Mat Crop(Mat input, cropBound *cBound, vector<imgBound> frameBound, Size size, i
 	// Smoothen transform boundaries
 	if(args.cSmooth>0)
 	{
-		// Past frames
-		cropBound past;
-		imgBound fb = frameBound.at(0);
-		past.minX = fb.minX+(cBound->minX-fb.minX)*args.cSmooth;
-		past.maxX = fb.maxX+(cBound->maxX-fb.maxX)*args.cSmooth;
-		past.minY = fb.minY+(cBound->minY-fb.minY)*args.cSmooth;
-		past.maxY = fb.maxY+(cBound->maxY-fb.maxY)*args.cSmooth;
-		
-		// Future frames
-		if(bufSize>1 && args.lookaheadPri>0)
-		{
-			cropBound future;
-			memcpy(&future, &past, sizeof(cropBound));
-			//for(int i=bufSize-1; i>=0; i--)
-			for(int i=0; i<bufSize; i++)
-			{
-				imgBound fb = frameBound.at(i);
-				future.minX = fb.minX+(future.minX-fb.minX)*args.cSmooth;
-				future.maxX = fb.maxX+(future.maxX-fb.maxX)*args.cSmooth;
-				future.minY = fb.minY+(future.minY-fb.minY)*args.cSmooth;
-				future.maxY = fb.maxY+(future.maxY-fb.maxY)*args.cSmooth;
-			}
-			cBound->minX = past.minX+(future.minX-past.minX)*args.lookaheadPri;
-			cBound->maxX = past.maxX+(future.maxX-past.maxX)*args.lookaheadPri;
-			cBound->minY = past.minY+(future.minY-past.minY)*args.lookaheadPri;
-			cBound->maxY = past.maxY+(future.maxY-past.maxY)*args.lookaheadPri;
-		} else {
-			memcpy(cBound, &past, sizeof(cropBound));
-		}
+		cBound->minX = frameBound.minX+(cBound->minX-frameBound.minX)*args.cSmooth;
+		cBound->maxX = frameBound.maxX+(cBound->maxX-frameBound.maxX)*args.cSmooth;
+		cBound->minY = frameBound.minY+(cBound->minY-frameBound.minY)*args.cSmooth;
+		cBound->maxY = frameBound.maxY+(cBound->maxY-frameBound.maxY)*args.cSmooth;
+	} else {
+		cBound->minX = frameBound.minX;
+		cBound->maxX = frameBound.maxX;
+		cBound->minY = frameBound.minY;
+		cBound->maxY = frameBound.maxY;
 	}
 	
 	// All values
@@ -111,8 +91,8 @@ Mat Crop(Mat input, cropBound *cBound, vector<imgBound> frameBound, Size size, i
 	int maxX = cBound->maxX;
 	int minY = cBound->minY;
 	int maxY = cBound->maxY;
-	int width = maxX-minX+1;
-	int height = maxY-minY+1;
+	int width = maxX-minX;
+	int height = maxY-minY;
 	
 	// Conform to aspect
 	int pWidth = (int)(height/aspect);		// Proposed width keeping height
@@ -188,13 +168,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
     Mat greyInput[2];
     cropBound cBound;
     capture.set(CAP_PROP_POS_FRAMES, 0);
-    
-    // Output mats
-    int outBufSize = 1;
-    if(!args.noCrop && args.cSmooth>0) outBufSize += args.lookahead;
-    vector<Mat> out;
-    vector<imgBound> frameBound;
-    
+ 
     // Test marker size
     int testMarkerSize;
 	if(width>height) testMarkerSize = lround((double)width*TEST_MARKER_SIZE);
@@ -247,8 +221,7 @@ void evalTransformStream(char *inFileName, char *outFileName)
 					t.CreateAbsoluteTransform(&prevMem, &newMem);
 
 					// Transform the frame
-					Mat o = t.TransformImage(frame);
-					imgBound fb = t.frameBound;
+					Mat out = t.TransformImage(frame);
 					if(framesRead==2)
 					{
 						// Initialize crop bound for past frames
@@ -257,26 +230,15 @@ void evalTransformStream(char *inFileName, char *outFileName)
 						cBound.minY = t.frameBound.minY;
 						cBound.maxY = t.frameBound.maxY;
 					}
-					out.push_back(o);
-					frameBound.push_back(fb);
 
-					// Save or continue
-					if(framesRead>outBufSize)
+					if(!args.noCrop)
 					{
-						// Buffer is full
-						if(!args.noCrop)
-						{
-							// Crop
-							Mat outCropped = Crop<TRANSFORM>(out.at(0), &cBound, frameBound, size, outBufSize);
-							outputVideo.write(outCropped);
-						} else {
-							// Not cropped
-							outputVideo.write(out.at(0));
-						}
-
-						// Shift buffer
-						out.erase(out.begin());
-						frameBound.erase(frameBound.begin());
+						// Crop
+						Mat outCropped = Crop<TRANSFORM>(out, &cBound, t.frameBound, size);
+						outputVideo.write(outCropped);
+					} else {
+						// Not cropped
+						outputVideo.write(out);
 					}
 
 					// Shift params
@@ -295,17 +257,6 @@ void evalTransformStream(char *inFileName, char *outFileName)
 			}
         }
     }
-
-	// Flushing the buffer
-	printf("\nFlusing the frame buffer");
-	fflush(stdout);		// Make printf work immediately
-	for(int i=0; i<outBufSize-1; i++)
-	{
-		// Crop
-		Mat outCropped = Crop<TRANSFORM>(out.at(0), &cBound, frameBound, size, outBufSize-1-i);
-		out.erase(out.begin());
-		outputVideo.write(outCropped);
-	}
 
     // Analyze accuracies
     //TRANSFORM::analyzeTransformAccuracies();
@@ -675,26 +626,25 @@ static struct argp_option options[] = {
 	{0,				'?',	0,					OPTION_HIDDEN,	0, 0},
 	{"input",		'i',	"file_name",		0, "Input video file", 0},
 	{"output",		'o',	"file_name",		0, "Output video file", 0},
-	{"nocrop",		'n',	0,					0, "Do not crop output", 1},
-	{"ssmooth",		's',	"float 0..1",		0, "Stabilization smoothness. Default=" JELLO_DECAY_S, 1},
-	{"csmooth",		'c',	"float 0..1",		0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 1},
-	{"zoom",		'z',	"float .01..100",	0, "Additional zoom. Default=" ZOOM_S, 1},
-	{"cla",			'l',	"0..100",			0, "Crop lookahead frames. Default=" LOOKAHEAD_S, 1},
-	{"clapri",		'p',	"float 0..1",		0, "Crop lookahead priority. Default=" LOOKAHEAD_PRI_S, 1},
 //	{"method",		'm',	"1-7",				0, "Processing method (see below). Default=" METHOD_S, 1},
-	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=" QLEVEL_S, 2},
-	{"nosubpix",	604,	0,					0, "Don't do corner subpixel interpolation", 2},
-	{"maxlevel",	605,	"0..100",			0, "Maximum pyramid level. Default=" MAX_LEVEL_S, 2},
-	{"winsize",		'w',	"1..100000",		0, "Search window size. Default=" WIN_SIZE_S, 2},
-	{"iter",		606,	"1..1000",			0, "Search iterations. Default=" ITER_S, 2},
-	{"stopacc",		607,	"float 0..1",		0, "Max accuracy to stop search. Default=" EPSILON_S, 2},
-	{"errthr",		608,	"float 0..1",		0, "Search errors filter threshold. Default=" EIG_THR_S, 2},
-	{"corners",		602,	"500..100000",		0, "Max number of corners. Default=" NUM_CORNERS_S, 2},
+	{"djdshift",	's',	"float 0..1",		0, "Dynamic jello decay (max shift). Default=" DJD_SHIFT_S, 2},
+	{"djdlinear",	'e',	"1..100",			0, "Dynamic jello decay (linearity). Default=" DJD_LINEAR_S, 2},
+	{"csmooth",		'c',	"float 0..1",		0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 3},
+	{"zoom",		'z',	"float .01..100",	0, "Additional zoom. Default=" ZOOM_S, 3},
+	{"nocrop",		'n',	0,					0, "Do not crop output", 3},
+	{"qlevel",		603,	"float 0..1",		0, "Tracker quality level. Default=" QLEVEL_S, 4},
+	{"nosubpix",	604,	0,					0, "Don't do corner subpixel interpolation", 4},
+	{"maxlevel",	605,	"0..100",			0, "Maximum pyramid level. Default=" MAX_LEVEL_S, 4},
+	{"winsize",		'w',	"1..100000",		0, "Search window size. Default=" WIN_SIZE_S, 4},
+	{"iter",		606,	"1..1000",			0, "Search iterations. Default=" ITER_S, 4},
+	{"stopacc",		607,	"float 0..1",		0, "Max accuracy to stop search. Default=" EPSILON_S, 4},
+	{"errthr",		608,	"float 0..1",		0, "Search errors filter threshold. Default=" EIG_THR_S, 4},
+	{"corners",		602,	"500..100000",		0, "Max number of corners. Default=" NUM_CORNERS_S, 4},
 //	{"tcols",		600,	"0..1000",			0, "Tracker corner columns. Default=" CORNER_COLS_S, 3},
 //	{"trows",		601,	"0..1000",			0, "Tracker corner rows. Default=" CORNER_ROWS_S, 3},
-	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 4},
-	{"warnings",	501,	0,					0, "Show all warnings/errors", 4},
-	{"test",		502,	0,					0, "Test mode (show corners, etc.)", 4},
+	{"threads",		500,	"-1 or >0",			0, "Number of threads to use. Default=-1 (auto)", 5},
+	{"warnings",	501,	0,					0, "Show all warnings/errors", 5},
+	{"test",		502,	0,					0, "Test mode (show corners, etc.)", 5},
 /*	{0,				0,		0,					OPTION_DOC, "Processing methods:\n"
 		"1 = JelloComplex2 (default, best)\n"
 		"2 = JelloComplex1\n"
@@ -746,12 +696,21 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 			
 		case 's':
-			// Stabilization smoothness (jello decay)
+			// Dynamic jello decay max shift
 			if(checkNumberArg(arg, 0, 1, true)) {
-				printf("Stabilization smoothness should be a floating-point number from 0 to 1.\n");
+				printf("Dynamic jello decay max shift should be a floating-point number from 0 to 1.\n");
 				exit(1);
 			}
-			args->jelloDecay = atof(arg);
+			args->djdShift = atof(arg);
+			break;
+
+		case 'e':
+			// Dynamic jello decay linearity
+			if(checkNumberArg(arg, .001, 100, true)) {
+				printf("Dynamic jello decay linearity should be from .001 to 100.\n");
+				exit(1);
+			}
+			args->djdLinear = atof(arg);
 			break;
 
 		case 'w':
@@ -770,24 +729,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 				exit(1);
 			}
 			args->zoom = atof(arg);
-			break;
-
-		case 'l':
-			// Crop lookahead
-			if(checkNumberArg(arg, 0, 100, false)) {
-				printf("Number of frames for crop lookahead should be from 1 to 100.\n");
-				exit(1);
-			}
-			args->lookahead = atoi(arg);
-			break;
-
-		case 'p':
-			// Crop lookahead priority
-			if(checkNumberArg(arg, 0, 1, true)) {
-				printf("Crop lookahead priority should be a floating-point number from 0 to 1.\n");
-				exit(1);
-			}
-			args->lookaheadPri = atof(arg);
 			break;
 
 		case 500:
@@ -940,15 +881,14 @@ int main(int argc, char* argv[])
 	args.test = false;
 	args.noCrop = false;
 	args.cSmooth = CROP_SMOOTH;
-	args.jelloDecay = JELLO_DECAY;
+	args.djdShift = DJD_SHIFT;
+	args.djdLinear = DJD_LINEAR;
 	args.zoom = ZOOM;
 	args.qualityLevel = QLEVEL;
 	args.maxLevel = MAX_LEVEL;
 	args.iter = ITER;
 	args.epsilon = EPSILON;
 	args.eigThr = EIG_THR;
-	args.lookahead = LOOKAHEAD;
-	args.lookaheadPri = LOOKAHEAD_PRI;
 	
 	// Parse arguments
 	if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;

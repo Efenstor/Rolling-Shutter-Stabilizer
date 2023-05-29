@@ -131,14 +131,13 @@ typedef struct
   int noCrop;
   double cSmooth;
   double zoom;
-  float jelloDecay;
+  float djdShift;
+  float djdLinear;
   double qualityLevel;
   int maxLevel;
   int iter;
   double epsilon;
   double eigThr;
-  int lookahead;
-  double lookaheadPri;
 } arguments;
 
 typedef struct

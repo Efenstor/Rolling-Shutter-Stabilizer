@@ -1896,9 +1896,9 @@ void JelloComplex2::CalcJelloTransform(Mat img1, Mat img2){
 	//printf("elapsed ms: %d\n", (int)elapsedMs);*/
 }
 
-void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent)
+void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem,
+	threadParams tExtent, float decayX, float decayY)
 {
-
 	for(int row=tExtent.from;row<tExtent.to;row++)
 	{
 		for(int col=0;col<imgWidth;col++)
@@ -1911,8 +1911,8 @@ void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, Tr
 			TransformPoint(x, y, x2, y2);
 
 			// Covert to shifts with inertia
-			newMem->shiftsX[row][col] = prevMem->shiftsX[row][col] * args.jelloDecay - x2 + x;
-			newMem->shiftsY[row][col] = prevMem->shiftsY[row][col] * args.jelloDecay - y2 + y;			
+			newMem->shiftsX[row][col] = prevMem->shiftsX[row][col] * decayX - x2 + x;
+			newMem->shiftsY[row][col] = prevMem->shiftsY[row][col] * decayY - y2 + y;			
 		}
 	}
 }
@@ -1920,6 +1920,20 @@ void JelloComplex2::CreateAbsoluteTransformThread(TransformationMem *prevMem, Tr
 void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem)
 {
 	vector<threadParams> tExtent;
+
+	// Dynamic jello decay
+	int cx = imgWidth/2;
+	int cy = imgHeight/2;
+	float x = cx + prevMem->shiftsX[cx][cy];
+	float y = cy + prevMem->shiftsY[cx][cy];
+	float x2, y2;
+	TransformPoint(x, y, x2, y2);
+	float maxShift = fmax(imgWidth * args.djdShift, imgHeight * args.djdShift);
+	float csX = fmin( abs(x2-cx) / maxShift, 1.0 );
+	float csY = fmin( abs(x2-cx) / maxShift, 1.0 );
+	float decayX = 1 - pow(csX, args.djdLinear);
+	float decayY = 1 - pow(csY, args.djdLinear);
+	//printf("csX=%f csY=%f decayX=%f decayY=%f\n", csX, csY, decayX, decayY);
 
 	// Prepare threads
 	int tNum = args.threads;
@@ -1939,7 +1953,8 @@ void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, Transfor
 	vector<std::thread> threads;
 	for(int t=0; t<tNum; t++)
 	{
-		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevMem, newMem, tExtent.at(t));
+		std::thread newThr(&JelloComplex2::CreateAbsoluteTransformThread, this, prevMem, newMem,
+			tExtent.at(t), decayX, decayY);
 		threads.push_back(move(newThr));
 	}
 	

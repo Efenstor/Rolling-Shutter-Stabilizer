@@ -3,8 +3,11 @@
 
 // _S are string representations for the help message
 
-#define JELLO_DECAY						.85
-#define JELLO_DECAY_S					".85"
+#define DJD_SHIFT						.3
+#define DJD_SHIFT_S						".3"
+
+#define DJD_LINEAR						3
+#define DJD_LINEAR_S					"3"
 
 #define WIN_SIZE						10
 #define WIN_SIZE_S						"10"
@@ -42,17 +45,13 @@
 #define METHOD							1
 #define METHOD_S						"1"
 
-#define LOOKAHEAD						15
-#define LOOKAHEAD_S						"15"
-
-#define LOOKAHEAD_PRI					.5
-#define LOOKAHEAD_PRI_S					".5"
-
 #define FPS_AFTER						5	// Seconds
 
 #define TEST_MARKER_SIZE				.0015
 
 // Old
+
+#define JELLO_DECAY						.85
 
 #define	TRANSLATION_DECAY				0.5
 #define ROTATION_DECAY					0.5
