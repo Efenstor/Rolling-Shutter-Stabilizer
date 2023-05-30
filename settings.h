@@ -6,8 +6,11 @@
 #define DJD_SHIFT                       .3
 #define DJD_SHIFT_S                     ".3"
 
-#define DJD_LINEAR                      2
-#define DJD_LINEAR_S                    "2"
+#define DJD_LINEAR                      3
+#define DJD_LINEAR_S                    "3"
+
+#define DJD_AMOUNT                      .9
+#define DJD_AMOUNT_S                    ".9"
 
 #define WIN_SIZE                        10
 #define WIN_SIZE_S                      "10"

@@ -679,8 +679,9 @@ static struct argp_option options[] = {
     {"output",      'o',    "file_name",        0, "Output video file", 0},
 //  {"method",      'm',    "1-7",              0, "Processing method (see below). Default=" METHOD_S, 1},
     {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 1},
-    {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay (max shift). Default=" DJD_SHIFT_S, 2},
-    {"djdlinear",   'e',    "1..100",           0, "Dynamic jello decay (linearity). Default=" DJD_LINEAR_S, 2},
+    {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 2},
+    {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 2},
+    {"djd",         'd',    "float 0..1",       0, "Dynamic jello decay amount. Default=" DJD_AMOUNT_S, 2},
     {"csmooth",     'c',    "float 0..1",       0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 3},
     {"zoom",        'z',    "float .01..100",   0, "Zoom (1 = no zoom). Default=" ZOOM_S, 3},
     {"nocrop",      'n',    0,                  0, "Do not crop output", 3},
@@ -692,11 +693,11 @@ static struct argp_option options[] = {
     {"stopacc",     607,    "float 0..1",       0, "Max accuracy to stop search. Default=" EPSILON_S, 4},
     {"errthr",      608,    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 4},
     {"corners",     602,    "500..100000",      0, "Max number of corners. Default=" NUM_CORNERS_S, 4},
-    {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 4},
-    {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 4},
-    {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 5},
-    {"warnings",    501,    0,                  0, "Show all warnings/errors", 5},
-    {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 5},
+    {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 5},
+    {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 5},
+    {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 6},
+    {"warnings",    501,    0,                  0, "Show all warnings/errors", 6},
+    {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 6},
 /*  {0,             0,      0,                  OPTION_DOC, "Processing methods:\n"
         "1 = JelloComplex2 (default, best)\n"
         "2 = JelloComplex1\n"
@@ -764,10 +765,19 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
         case 'e':
             // Dynamic jello decay linearity
             if(checkNumberArg(arg, .001, 100, true)) {
-                printf("Dynamic jello decay linearity should be from .001 to 100.\n");
+                printf("Dynamic jello decay linearity should be a floating-point number from .001 to 100.\n");
                 exit(1);
             }
             args->djdLinear = atof(arg);
+            break;
+
+        case 'd':
+            // Dynamic jello decay amount
+            if(checkNumberArg(arg, 0, 1, true)) {
+                printf("Dynamic jello decay amount should be a floating-point number from .1 to 100\n");
+                exit(1);
+            }
+            args->djdAmount = atof(arg);
             break;
 
         case 'w':
@@ -940,6 +950,7 @@ int main(int argc, char* argv[])
     args.cSmooth = CROP_SMOOTH;
     args.djdShift = DJD_SHIFT;
     args.djdLinear = DJD_LINEAR;
+    args.djdAmount = DJD_AMOUNT;
     args.zoom = ZOOM;
     args.qualityLevel = QLEVEL;
     args.maxLevel = MAX_LEVEL;

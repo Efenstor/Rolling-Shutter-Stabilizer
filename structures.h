@@ -133,6 +133,7 @@ typedef struct
   double zoom;
   float djdShift;
   float djdLinear;
+  float djdAmount;
   double qualityLevel;
   int maxLevel;
   int iter;
