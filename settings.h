@@ -24,11 +24,11 @@
 #define CORNER_ROWS                     15
 #define CORNER_ROWS_S                   "15"
 
-#define CROP_SMOOTH                     .95
-#define CROP_SMOOTH_S                   ".95"
+#define CROP_SMOOTH                     .3
+#define CROP_SMOOTH_S                   ".3"
 
-#define ZOOM                            1.1
-#define ZOOM_S                          "1.1"
+#define ZOOM                            1.2
+#define ZOOM_S                          "1.2"
 
 #define QLEVEL                          .02
 #define QLEVEL_S                        ".02"
