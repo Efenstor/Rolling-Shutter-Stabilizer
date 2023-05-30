@@ -250,13 +250,18 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
                     {
                         // Find the min frame bounds in the whole sequence
                         float cMinX[2], cMaxX[2], cMinY[2], cMaxY[2];
-                        t.TransformPointAbs(t.frameBound.minX, t.frameBound.minY, cMinX[0], cMinY[0]);
+                        cMinX[0] = t.frameBound.minX-newMem.shiftsX[t.frameBound.minY][t.frameBound.minX];
+                        cMinX[1] = t.frameBound.minX-newMem.shiftsX[t.frameBound.maxY-1][t.frameBound.minX];
+                        cMaxX[0] = t.frameBound.maxX-newMem.shiftsX[t.frameBound.minY][t.frameBound.maxX-1];
+                        cMaxX[1] = t.frameBound.maxX-newMem.shiftsX[t.frameBound.maxY-1][t.frameBound.maxX-1];
+                        cMinY[0] = t.frameBound.minY-newMem.shiftsY[t.frameBound.minY][t.frameBound.minX];
+                        cMinY[1] = t.frameBound.minY-newMem.shiftsY[t.frameBound.maxY-1][t.frameBound.minX];
+                        cMaxY[0] = t.frameBound.maxY-newMem.shiftsY[t.frameBound.minY][t.frameBound.maxX-1];
+                        cMaxY[1] = t.frameBound.maxY-newMem.shiftsY[t.frameBound.maxY-1][t.frameBound.maxX-1];
+                        /*t.TransformPointAbs(t.frameBound.minX, t.frameBound.minY, cMinX[0], cMinY[0]);
+                        t.TransformPointAbs(t.frameBound.maxX-1, t.frameBound.minY, cMaxX[0], cMinY[1]);
                         t.TransformPointAbs(t.frameBound.minX, t.frameBound.maxY-1, cMinX[1], cMaxY[0]);
-                        t.TransformPointAbs(t.frameBound.maxX, t.frameBound.minY, cMaxX[0], cMinY[1]);
-                        t.TransformPointAbs(t.frameBound.maxX-1, t.frameBound.maxY-1, cMaxX[1], cMaxY[1]);
-                        // Here we need to use mins and maxes mirrored because
-                        // TransformPointAbs is intended to be used on the source,
-                        // not the destination, thus its results here are mirrored
+                        t.TransformPointAbs(t.frameBound.maxX-1, t.frameBound.maxY-1, cMaxX[1], cMaxY[1]);*/
                         cBound.minX = fmax(cBound.minX, width-cMaxX[0]);
                         cBound.minX = fmax(cBound.minX, width-cMaxX[1]);
                         cBound.maxX = fmin(cBound.maxX, width-cMinX[0]);
