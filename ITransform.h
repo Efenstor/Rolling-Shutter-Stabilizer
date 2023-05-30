@@ -23,23 +23,23 @@
 
 class ITransform
 {
-	public:
-		static imgBound frameBound;
-		static vector<float> frameErrors;
+    public:
+        static imgBound frameBound;
+        static vector<float> frameErrors;
 
-		static int imgHeight, imgWidth;
-		static int processedFrameCount;
+        static int imgHeight, imgWidth;
+        static int processedFrameCount;
 
-		ITransform();
-		ITransform(Mat img1, Mat img2, int index0, int index1);
-		void TransformImageThread(Mat input, Mat out, threadParams tExtent, imgBound *fb);
-		Mat TransformImage(Mat input);
-		virtual void TransformPoint(float x, float y, float &x2, float &y2) = 0;
-		virtual void TransformPointAbs(float x, float y, float &x2, float &y2) = 0;
-		static void analyzeTransformAccuracies();
+        ITransform();
+        ITransform(Mat img1, Mat img2, int index0, int index1);
+        void TransformImageThread(Mat input, Mat out, threadParams tExtent, imgBound *fb);
+        Mat TransformImage(Mat input);
+        virtual void TransformPoint(float x, float y, float &x2, float &y2) = 0;
+        virtual void TransformPointAbs(float x, float y, float &x2, float &y2) = 0;
+        static void analyzeTransformAccuracies();
 
-	protected:
-		void evalTransforms(int indx0, int index1, char* baseShiftFilename);
+    protected:
+        void evalTransforms(int indx0, int index1, char* baseShiftFilename);
 };
 
 #endif

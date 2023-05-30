@@ -14,8 +14,8 @@ using namespace std;
 
 typedef struct
 {
-	vector<Point2f> features;
-	vector<Mat> pyramid;
+    vector<Point2f> features;
+    vector<Mat> pyramid;
 } FeaturesInfo;
 
 typedef struct
@@ -94,18 +94,18 @@ typedef struct
 
 typedef struct
 {
-	int minX;
-	int maxX;
-	int minY;
-	int maxY;
+    int minX;
+    int maxX;
+    int minY;
+    int maxY;
 } imgBound;
 
 typedef struct
 {
-	double minX;
-	double maxX;
-	double minY;
-	double maxY;
+    double minX;
+    double maxX;
+    double minY;
+    double maxY;
 } cropBound;
 
 typedef struct
@@ -138,12 +138,13 @@ typedef struct
   int iter;
   double epsilon;
   double eigThr;
+  bool twoPass;
 } arguments;
 
 typedef struct
 {
-	int from;
-	int to;
+    int from;
+    int to;
 } threadParams;
 
 #endif
