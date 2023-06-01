@@ -735,7 +735,7 @@ static struct argp_option options[] = {
     {"codec",       'c',    "name",             0, "Output codec. Default=" FOURCC "/" CODEC, 1},
     {"codecb",      'b',    "-1..1000",         0, "Encoding bitrate (Mbps)", 1},
     {"codecq",      'q',    "-1..100",          0, "Encoding quality factor (quantizer)", 1},
-//  {"method",      'm',    "1-7",              0, "Processing method (see below). Default=" METHOD_S, 2},
+    {"method",      'm',    "1-2",              0, "Processing method (see below). Default=" METHOD_S, 2},
     {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 2},
     {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 3},
     {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 3},
@@ -756,14 +756,9 @@ static struct argp_option options[] = {
     {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 7},
     {"warnings",    501,    0,                  0, "Show all warnings/errors", 7},
     {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 7},
-/*  {0,             0,      0,                  OPTION_DOC, "Processing methods:\n"
-        "1 = JelloComplex2 (default, best)\n"
-        "2 = JelloComplex1\n"
-        "3 = JelloTransform2\n"
-        "4 = JelloTransform1\n"
-        "5 = FullFrameTransform2 (for debug use)\n"
-        "6 = FullFrameTransform (for debug use)\n"
-        "7 = NullTransform (for debug use)", 0},*/
+    {0,             0,      0,                  OPTION_DOC, "Processing methods:\n"
+        "  1 = JelloComplex2\n"
+        "  2 = JelloComplex1", 0},
     {0, 0, 0, 0, 0, 0}
 };
 
@@ -810,8 +805,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'm':
             // Method
-            if(checkNumberArg(arg, 1, 7, false)) {
-                printf("Method should be a number from 1 to 7.\n");
+            if(checkNumberArg(arg, 1, 2, false)) {
+                printf("Method should be a number from 1 to 2.\n");
                 exit(1);
             }
             args->method = atoi(arg);
@@ -1083,26 +1078,20 @@ int main(int argc, char* argv[])
     cv::setUseOptimized(true);
 
     // Do processing
+    void (*ets)(char*, char*, bool);
     switch(args.method)
     {
         case 1:
-            if(args.twoPass) {
-                args.zoom = 1;
-                printf("Pass 1/2\n");
-                evalTransformStream<JelloComplex2>(args.inFileName, args.outFileName, true);
-                printf("\nPass 2/2\n");
-                evalTransformStream<JelloComplex2>(args.inFileName, args.outFileName, false);
-            } else {
-                evalTransformStream<JelloComplex2>(args.inFileName, args.outFileName, false);
-                //evalTransform<JelloComplex2>(args.inFileName, args.outFileName);
-            }
+            printf("Using method JelloComplex2\n");
+            ets = evalTransformStream<JelloComplex2>;
             break;
 
         case 2:
-            evalTransform<JelloComplex1>(args.inFileName, args.outFileName);
+            printf("Using method JelloComplex1\n");
+            ets = evalTransformStream<JelloComplex1>;
             break;
 
-        case 3:
+        /*case 3:
             evalTransform<JelloTransform2>(args.inFileName, args.outFileName);
             break;
 
@@ -1120,8 +1109,17 @@ int main(int argc, char* argv[])
 
         case 7:
             evalTransform<NullTransform>(args.inFileName, args.outFileName);
-            break;
+            break;*/
 
+    }
+    if(args.twoPass) {
+        args.zoom = 1;
+        printf("Pass 1/2\n");
+        ets(args.inFileName, args.outFileName, true);
+        printf("\nPass 2/2\n");
+        ets(args.inFileName, args.outFileName, false);
+    } else {
+        ets(args.inFileName, args.outFileName, false);
     }
 
     /*switch(args.debugOpt)

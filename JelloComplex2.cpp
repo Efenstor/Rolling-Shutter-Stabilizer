@@ -1965,13 +1965,15 @@ void JelloComplex2::CreateAbsoluteTransform(TransformationMem *prevMem, Transfor
     }
 }
 
-void JelloComplex2::TransformPoint(float x, float y, float &x2, float &y2){
+void JelloComplex2::TransformPoint(float x, float y, float &x2, float &y2)
+{
     EXTRACT_PARAMS(params)
     x2 = dx0 + dx1*y + dx2_0*sin(dx3_0*y + dx4_0) + dx2_1*sin(dx3_1*y + dx4_1) + x*cos(r0 + r1*y) - y*sin(r0 + r1*y);
     y2 = dy0 + dy1*y + dy2_0*sin(dy3_0*y + dy4_0) + dy2_1*sin(dy3_1*y + dy4_1) + x*sin(r0 + r1*y) + y*cos(r0 + r1*y) + r2_0*(-centerX + x)*sin(r3_0*y + r4_0)/(2*centerX) + r2_1*(-centerX + x)*sin(r3_1*y + r4_1)/(2*centerX);
 }
 
-void JelloComplex2::TransformPointAbs(float x, float y, float &x2, float &y2){
+void JelloComplex2::TransformPointAbs(float x, float y, float &x2, float &y2)
+{
     int ix = round(x);
     int iy = round(y);
 
@@ -1979,7 +1981,8 @@ void JelloComplex2::TransformPointAbs(float x, float y, float &x2, float &y2){
     y2 = y - shiftsY[iy][ix];
 }
 
-void JelloComplex2::analyzeTransformAccuracies(){
+void JelloComplex2::analyzeTransformAccuracies()
+{
     if(allWelschCosts.size() == 0){
         printf("no shifts were analyzed during the run\n");
         return;

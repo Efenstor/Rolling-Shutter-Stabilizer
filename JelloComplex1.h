@@ -33,13 +33,14 @@ class JelloComplex1 : public ITransform {
 
         int jelloMinX, jelloMinY;
 
-        JelloComplex1();
+        JelloComplex1(TransformationMem *tm);
 
-        JelloComplex1(Mat img1, Mat img2, int index0, int index1);
+        JelloComplex1(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm);
 
-        JelloComplex1(vector<Point2f> corners1, vector<Point2f> corners2, int length);
+        JelloComplex1(vector<Point2f> corners1, vector<Point2f> corners2, int length, TransformationMem *tm);
 
-        void CreateAbsoluteTransform(JelloComplex1 prevTransform);
+        void CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent, float decayX, float decayY);
+        void CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem);
 
         void TransformPoint(float x, float y, float &x2, float &y2);
 
@@ -50,8 +51,9 @@ class JelloComplex1 : public ITransform {
         float FullModelCostWelsch(vector<Point2f> corners1, vector<Point2f> corners2, float w, float* params);
 
         float FullModelCostLs(vector<Point2f> corners1, vector<Point2f> corners2, float* params);
+
     protected:
-        vector<Transformation> jelloTransforms; 	
+        vector<Transformation> jelloTransforms;
 
         void CalcJelloTransform(Mat img1, Mat img2);
         void GetSineEstimatesWeighted(vector<float> ys, vector<float> diffs, vector<float> weights, float* &result);
@@ -59,7 +61,7 @@ class JelloComplex1 : public ITransform {
         float SineEstimatesCost(vector<float> ys, vector<float> diffs, vector<float> weights, float* params);
 
         void FullModelWelschFit(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates, float &lambda, float w);
-        void AllocateShiftMem();
+        void AssignShiftMem(TransformationMem *tm);
 
         void Model2NewtonIterationLS(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates);
 };
