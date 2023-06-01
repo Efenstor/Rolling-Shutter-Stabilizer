@@ -141,7 +141,21 @@ template <class TRANSFORM>
 void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
 {
     // Open input file
-    VideoCapture capture = VideoCapture(inFileName);
+    VideoCapture capture;
+    if(args.encBitrate>=0 || args.encQuality>=0)
+    {
+        // GStreamer
+        printf("Using GStreamer OpenCV decoding backend\n");
+        string vcString;
+        vcString.append("filesrc location=\"");
+        vcString.append(inFileName);
+        vcString.append("\" ! decodebin ! videoconvert ! video/x-raw,format=BGR ! appsink");
+        capture = VideoCapture(vcString, CAP_GSTREAMER);
+    } else {
+        // Default
+        printf("Using default OpenCV decoding backend\n");
+        capture = VideoCapture(inFileName);
+    }
     if (capture.isOpened()) {
         printf("Opened %s\n", inFileName);
     } else {
@@ -167,11 +181,39 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
     // Create output file
     VideoWriter outputVideo;
     Size size(width, height);
-    outputVideo.open(outFileName, VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, size, true);
+    if(args.encBitrate>=0 || args.encQuality>=0)
+    {
+        // GStreamer
+        printf("Using GStreamer OpenCV encoding backend\n");
+        string gsString;
+        gsString.append("appsrc ! videoconvert ! ");
+        gsString.append(args.codec);
+        if(args.encQuality>=0) {
+            char a[50];
+            sprintf(a, " quantizer=%i", args.encQuality);
+            gsString.append(a);
+            printf("Encoder quantizer: %i\n", args.encQuality);
+        }
+        if(args.encBitrate>=0) {
+            char a[50];
+            sprintf(a, " bitrate=%i", args.encBitrate);
+            gsString.append(a);
+            printf("Encoder bitrate: %i kbps\n", args.encBitrate);
+        }
+        gsString.append(" ! filesink location=\"");
+        gsString.append(outFileName);
+        gsString.append("\"");
+        outputVideo.open(gsString, CAP_GSTREAMER, 0, fps, size, true);
+    } else {
+        // Default
+        printf("Using default OpenCV encoding backend\n");
+        outputVideo.open(outFileName, args.fourcc, fps, size, true);
+    }
     if(outputVideo.isOpened()) {
         printf("Saving as %s\n", outFileName);
     } else {
         printf("Failed to create output file %s\n", outFileName);
+        printf("NOTE: set bitrate or quality to -1 to use codecs which want neither.\n");
         exit(2);
     }
 
@@ -185,7 +227,6 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
     // Init others
     Mat greyInput[2];
     static cropBound cBound;
-    capture.set(CAP_PROP_POS_FRAMES, 0);
 
     // Test marker size
     int testMarkerSize;
@@ -308,6 +349,8 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
     if(args.twoPass && prePass)
     {
         printf("\nBoundaries detected: minX=%i, maxX=%i, minY=%i, maxY=%i\n", (int)cBound.minX, (int)cBound.maxX, (int)cBound.minY, (int)cBound.maxY);
+    } else {
+        outputVideo.release();
     }
 
     // Analyze accuracies
@@ -624,6 +667,17 @@ void plotCornersOnColor(char *inFileName){
 
 }
 
+int fourCC(char *fourcc)
+{
+    char f[4];
+    for(int i=0; i<4; i++)
+    {
+        if(i<(int)strlen(fourcc)) f[i] = toupper(fourcc[i]);
+        else f[i] = ' ';
+    }
+    return VideoWriter::fourcc(f[0], f[1], f[2], f[3]);
+}
+
 int checkNumberArg(char *optarg, double min, double max, bool fp)
 {
     int i;
@@ -678,27 +732,30 @@ static struct argp_option options[] = {
     {0,             '?',    0,                  OPTION_HIDDEN,  0, 0},
     {"input",       'i',    "file_name",        0, "Input video file", 0},
     {"output",      'o',    "file_name",        0, "Output video file", 0},
-//  {"method",      'm',    "1-7",              0, "Processing method (see below). Default=" METHOD_S, 1},
-    {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 1},
-    {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 2},
-    {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 2},
-    {"djd",         'd',    "float 0..1",       0, "Dynamic jello decay amount. Default=" DJD_AMOUNT_S, 2},
-    {"csmooth",     'c',    "float 0..1",       0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 3},
-    {"zoom",        'z',    "float .01..100",   0, "Zoom (1 = no zoom). Default=" ZOOM_S, 3},
-    {"nocrop",      'n',    0,                  0, "Do not crop output", 3},
-    {"qlevel",      603,    "float 0..1",       0, "Tracker quality level. Default=" QLEVEL_S, 4},
-    {"nosubpix",    604,    0,                  0, "Don't do corner subpixel interpolation", 4},
-    {"maxlevel",    605,    "0..100",           0, "Maximum pyramid level. Default=" MAX_LEVEL_S, 4},
-    {"winsize",     'w',    "1..100000",        0, "Search window size. Default=" WIN_SIZE_S, 4},
-    {"iter",        606,    "1..1000",          0, "Search iterations. Default=" ITER_S, 4},
-    {"stopacc",     607,    "float 0..1",       0, "Max accuracy to stop search. Default=" EPSILON_S, 4},
-    {"errthr",      608,    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 4},
-    {"corners",     602,    "500..100000",      0, "Max number of corners. Default=" NUM_CORNERS_S, 4},
-    {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 5},
-    {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 5},
-    {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 6},
-    {"warnings",    501,    0,                  0, "Show all warnings/errors", 6},
-    {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 6},
+    {"codec",       'c',    "name",             0, "Output codec. Default=" FOURCC "/" CODEC, 1},
+    {"codecb",      'b',    "-1..1000",         0, "Encoding bitrate (Mbps)", 1},
+    {"codecq",      'q',    "-1..100",          0, "Encoding quality factor (quantizer)", 1},
+//  {"method",      'm',    "1-7",              0, "Processing method (see below). Default=" METHOD_S, 2},
+    {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 2},
+    {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 3},
+    {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 3},
+    {"djd",         'd',    "float 0..1",       0, "Dynamic jello decay amount. Default=" DJD_AMOUNT_S, 3},
+    {"csmooth",     'a',    "float 0..1",       0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 4},
+    {"zoom",        'z',    "float .01..100",   0, "Zoom (1 = no zoom). Default=" ZOOM_S, 4},
+    {"nocrop",      'n',    0,                  0, "Do not crop output", 4},
+    {"qlevel",      603,    "float 0..1",       0, "Tracker quality level. Default=" QLEVEL_S, 5},
+    {"nosubpix",    604,    0,                  0, "Don't do corner subpixel interpolation", 5},
+    {"maxlevel",    605,    "0..100",           0, "Maximum pyramid level. Default=" MAX_LEVEL_S, 5},
+    {"winsize",     'w',    "1..100000",        0, "Search window size. Default=" WIN_SIZE_S, 5},
+    {"iter",        606,    "1..1000",          0, "Search iterations. Default=" ITER_S, 5},
+    {"stopacc",     607,    "float 0..1",       0, "Max accuracy to stop search. Default=" EPSILON_S, 5},
+    {"errthr",      608,    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 5},
+    {"corners",     602,    "500..100000",      0, "Max number of corners. Default=" NUM_CORNERS_S, 5},
+    {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 6},
+    {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 6},
+    {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 7},
+    {"warnings",    501,    0,                  0, "Show all warnings/errors", 7},
+    {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 7},
 /*  {0,             0,      0,                  OPTION_DOC, "Processing methods:\n"
         "1 = JelloComplex2 (default, best)\n"
         "2 = JelloComplex1\n"
@@ -726,6 +783,31 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             args->outFileName = arg;
             break;
 
+        case 'c':
+            // Codec or fourcc
+            args->codec = arg;
+            break;
+
+        case 'q':
+            // Encoder quality
+            if(checkNumberArg(arg, -1, 100, false)) {
+                printf("Encoder quality should be a number from 0 to 100.\n");
+                printf("Use -1 to use codecs which require no bitrate a quantizer parameter.\n");
+                exit(1);
+            }
+            args->encQuality = atoi(arg);
+            break;
+
+        case 'b':
+            // Encoder bitrate
+            if(checkNumberArg(arg, -1, 1000, false)) {
+                printf("Encoder bitrate in Mbps should be a number from 0 to 1000.\n");
+                printf("Use -1 to use codecs which require no bitrate or quantizer parameter.\n");
+                exit(1);
+            }
+            args->encBitrate = atoi(arg)*1000;
+            break;
+
         case 'm':
             // Method
             if(checkNumberArg(arg, 1, 7, false)) {
@@ -745,7 +827,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             args->noCrop = true;
             break;
 
-        case 'c':
+        case 'a':
             // Adaptive crop smoothness
             if(checkNumberArg(arg, 0, 1, true)) {
                 printf("Crop smoothness should be a floating-point number from 0 to 1.\n");
@@ -938,6 +1020,10 @@ int main(int argc, char* argv[])
     // Defaults
     args.inFileName = NULL;
     args.outFileName = NULL;
+    args.fourcc = 0;
+    args.codec = NULL;
+    args.encQuality = -2;
+    args.encBitrate = -2;
     args.method = METHOD;
     args.threads = -1;
     args.warnings = false;
@@ -962,6 +1048,24 @@ int main(int argc, char* argv[])
 
     // Parse arguments
     if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;
+
+    // fourCC
+    if(args.encQuality<1 && args.encBitrate<1 && strlen(args.codec)<=4) {
+        if(args.codec)
+        {
+            // Custom fourcc
+            args.fourcc = fourCC(args.codec);
+        } else {
+            // Default fourcc
+            args.fourcc = fourCC((char*)FOURCC);
+        }
+    } else {
+        if(!args.codec)
+        {
+            // Default codec
+            args.codec = (char*)CODEC;
+        }
+    }
 
     // Threads
     if(args.threads<1)

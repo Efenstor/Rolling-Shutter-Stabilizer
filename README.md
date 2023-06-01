@@ -33,4 +33,4 @@ Run *rsvs -h* for full help.
 
 ### Notes:
 
-Currently the output codec is hardcoded to MJPEG.
+By default OpenCV does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value. Therefore, if you set the quality (-q) or bitrate (-b) parameters then GStreamer will be attempted to be used instead of the default built-in OpenCV encoder. The output picture produced in this case may suffer from slight imperfections, such as oversaturation, the solution to which is yet to be found.

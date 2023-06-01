@@ -3,6 +3,9 @@
 
 // _S are string representations for the help message
 
+#define FOURCC                          "H264"
+#define CODEC                           "x264enc"
+
 #define DJD_SHIFT                       .3
 #define DJD_SHIFT_S                     ".3"
 
@@ -24,8 +27,8 @@
 #define CORNER_ROWS                     15
 #define CORNER_ROWS_S                   "15"
 
-#define CROP_SMOOTH                     .3
-#define CROP_SMOOTH_S                   ".3"
+#define CROP_SMOOTH                     .5
+#define CROP_SMOOTH_S                   ".5"
 
 #define ZOOM                            1.2
 #define ZOOM_S                          "1.2"

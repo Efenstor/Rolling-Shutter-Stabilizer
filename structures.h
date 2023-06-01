@@ -119,6 +119,10 @@ typedef struct
 typedef struct
 {
   char *inFileName, *outFileName;
+  int fourcc;
+  char *codec;
+  int encQuality;
+  int encBitrate;
   int method;
   int threads;
   bool warnings;
