@@ -21,11 +21,11 @@
 #define NUM_CORNERS                     1000
 #define NUM_CORNERS_S                   "1000"
 
-#define CORNER_COLS                     20
-#define CORNER_COLS_S                   "20"
+#define CORNER_COLS                     40
+#define CORNER_COLS_S                   "40"
 
-#define CORNER_ROWS                     15
-#define CORNER_ROWS_S                   "15"
+#define CORNER_ROWS                     20
+#define CORNER_ROWS_S                   "20"
 
 #define CROP_SMOOTH                     .5
 #define CROP_SMOOTH_S                   ".5"
@@ -36,8 +36,8 @@
 #define QLEVEL                          .02
 #define QLEVEL_S                        ".02"
 
-#define MAX_LEVEL                       50
-#define MAX_LEVEL_S                     "50"
+#define MAX_LEVEL                       100
+#define MAX_LEVEL_S                     "100"
 
 #define ITER                            30
 #define ITER_S                          "30"
@@ -45,8 +45,8 @@
 #define EPSILON                         .1
 #define EPSILON_S                       ".1"
 
-#define EIG_THR                         .001
-#define EIG_THR_S                       ".001"
+#define EIG_THR                         .01
+#define EIG_THR_S                       ".01"
 
 #define METHOD                          1
 #define METHOD_S                        "1"

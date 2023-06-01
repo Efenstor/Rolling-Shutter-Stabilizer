@@ -425,7 +425,7 @@ static struct argp_option options[] = {
     {"winsize",     'w',    "1..100000",        0, "Search window size. Default=" WIN_SIZE_S, 5},
     {"iter",        606,    "1..1000",          0, "Search iterations. Default=" ITER_S, 5},
     {"stopacc",     607,    "float 0..1",       0, "Max accuracy to stop search. Default=" EPSILON_S, 5},
-    {"errthr",      608,    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 5},
+    {"errthr",      'r',    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 5},
     {"corners",     602,    "500..100000",      0, "Max number of corners. Default=" NUM_CORNERS_S, 5},
     {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 6},
     {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 6},
@@ -641,7 +641,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             args->epsilon = atof(arg);
             break;
 
-        case 608:
+        case 'r':
             // Eigen threshold
             if(checkNumberArg(arg, 0, 1, true)) {
                 printf("Eigen threshold should be a floating-point number from 0 to 1.\n");

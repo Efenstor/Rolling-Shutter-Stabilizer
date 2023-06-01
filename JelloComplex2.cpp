@@ -1327,9 +1327,9 @@ void JelloComplex2::FullModelWelschFit(vector<Point2f> corners1, vector<Point2f>
         float newCost = FullModelCostWelsch(corners1, corners2, w, newParams);
         //printf("newCost: %f  lambda %f\n", newCost, lambda);
         if(isnan(newCost)){
-            printf("new cost is NAN\n");
+            if(args.warnings) printf("new cost is NAN\n");
             for(int i=0;i<24;i++){
-                printf("old%f  new: %f\n", params[i], newParams[i]);
+                if(args.warnings) printf("old%f  new: %f\n", params[i], newParams[i]);
                 updates[i] = 0;
             }
             lambda *= LAMBDA_INCREASE;  //maybe have a better change next time?
@@ -1641,13 +1641,14 @@ void JelloComplex2::ImproveSineEstimatesWelsch(vector<float> ys, vector<float> d
         float newCost = SineEstimatesCostWelsch(ys, diffs, weights, newParams, w);
 
         if(isnan(newCost)){
-            printf("new cost is NAN in GetSineEstimatesWeighted()");
-            printf("jacobian: \n");
-            jacob.print();
-            printf("f vector: \n");
-            fVector.print();
-            printf("input params: %f %f %f\n", params[0], params[1], params[2]);
-            exit(0);
+            if(args.warnings) {
+                printf("new cost is NAN in GetSineEstimatesWeighted()\n");
+                printf("jacobian: \n");
+                jacob.print();
+                printf("f vector: \n");
+                fVector.print();
+                printf("input params: %f %f %f\n", params[0], params[1], params[2]);
+            }
             lambda *= LAMBDA_INCREASE;
             updates[0] = 0;
             updates[1] = 0;
@@ -1848,7 +1849,7 @@ void JelloComplex2::model2LMIterationWelsch(vector<Point2f> corners1, vector<Poi
         //printf("startcost: %f   newCost: %f\n", startCost, newCost);
 
         if(isnan(newCost)){
-            printf("new cost is NAN in model2LMIterationWelsch()");
+            if(args.warnings) printf("new cost is NAN in model2LMIterationWelsch()");
             lambda *= LAMBDA_INCREASE;
             update(0) = 0;
             update(1) = 0;

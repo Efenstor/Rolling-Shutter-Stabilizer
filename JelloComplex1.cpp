@@ -1226,9 +1226,9 @@ void JelloComplex1::FullModelWelschFit(vector<Point2f> corners1, vector<Point2f>
         float newCost = FullModelCostWelsch(corners1, corners2, w, newParams);
         //printf("newCost: %f  lambda %f\n", newCost, lambda);
         if(isnan(newCost)){
-            printf("new cost is NAN\n");
+            if(args.warnings) printf("new cost is NAN\n");
             for(int i=0;i<24;i++){
-                printf("old%f  new: %f\n", params[i], newParams[i]);
+                if(args.warnings) printf("old%f  new: %f\n", params[i], newParams[i]);
                 update(i) = 0;
             }
             lambda *= LAMBDA_INCREASE;  //maybe have a better change next time?
@@ -1442,7 +1442,7 @@ void JelloComplex1::ImproveSineEstimates(vector<float> ys, vector<float> diffs, 
         float newCost = SineEstimatesCost(ys, diffs, weights, newParams);
         //printf("newCost: %f  lambda %f\n", newCost, lambda);
         if(isnan(newCost)){
-            printf("new cost is NAN in GetSineEstimatesWeighted()");
+            if(args.warnings) printf("new cost is NAN in GetSineEstimatesWeighted()");
             lambda *= LAMBDA_INCREASE;
             update(0) = 0;
             update(1) = 0;
