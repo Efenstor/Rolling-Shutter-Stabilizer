@@ -257,21 +257,22 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
             if(i>0) greyMat.copyTo(greyInput[1]);
             else greyMat.copyTo(greyInput[0]);
 
-            // Process or test mode
-            if(args.test)
+            // Process if more than 1 frame is read
+            if(framesRead>1)
             {
-                // Test mode
-                vector<Point2f> corners = extractCornersToTrack(greyInput[0]);
-                for(int i=0;i<(int)corners.size();i++)
+                if(args.test)
                 {
-                    circle(frame, corners[i], testMarkerSize, Scalar(0, 0, 0), 1);
-                    circle(frame, corners[i], testMarkerSize-1, Scalar(255, 255, 255), FILLED);
-                }
-                outputVideo.write(frame);
-            } else {
-                // Process if more than 1 frame is read
-                if(framesRead>1)
-                {
+                    // Test mode
+                    vector<Point2f> corners1, corners2;
+                    int length = GetPointsToTrack(greyInput[0], greyInput[1], corners1, corners2);
+                    for(int i=0;i<length;i++)
+                    {
+                        line(frame, corners1[i], corners2[i], Scalar(255, 255, 255), 1);
+                        circle(frame, corners1[i], testMarkerSize, Scalar(0, 0, 0), 1);
+                        circle(frame, corners1[i], testMarkerSize-1, Scalar(255, 255, 255), FILLED);
+                    }
+                    outputVideo.write(frame);
+                } else {
                     // Create a transform matrix using previous the frame and the current
                     TRANSFORM t = TRANSFORM(greyInput[0], greyInput[1], i-1, i, &newMem);
                     t.CreateAbsoluteTransform(&prevMem, &newMem);
