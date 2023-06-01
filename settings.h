@@ -45,8 +45,8 @@
 #define EPSILON                         .1
 #define EPSILON_S                       ".1"
 
-#define EIG_THR                         .01
-#define EIG_THR_S                       ".01"
+#define EIG_THR                         0
+#define EIG_THR_S                       "0"
 
 #define METHOD                          1
 #define METHOD_S                        "1"
