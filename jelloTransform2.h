@@ -30,22 +30,23 @@ class JelloTransform2 : public ITransform {
         float ** shiftsY;
         float * params;
 
-        JelloTransform2();
+        JelloTransform2(TransformationMem *tm);
 
-        JelloTransform2(Mat img1, Mat img2, int index0, int index1);
+        JelloTransform2(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm);
 
-        void CreateAbsoluteTransform(JelloTransform2 prevTransform);
+        void CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent, float decayX, float decayY);
+        void CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem);
 
         void TransformPoint(float x, float y, float &x2, float &y2);
 
         void TransformPointAbs(float x, float y, float &x2, float &y2);
 
     protected:
-        vector<Transformation> jelloTransforms;     
+        vector<Transformation> jelloTransforms;
 
         void CalcJelloTransform(Mat img1, Mat img2);
 
-        void AllocateShiftMem();
+        void AssignShiftMem(TransformationMem *tm);
 };
 
 

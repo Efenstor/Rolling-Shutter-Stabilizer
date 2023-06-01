@@ -13,6 +13,8 @@
 
 #include <armadillo>
 
+extern arguments args;
+
 using namespace std;
 using namespace cv;
 
@@ -25,13 +27,13 @@ Transformation prunedWeightedSvd(vector<Point2f> corners1, vector<Point2f> corne
     {
         float x = corners1[i].x;
         float y = corners1[i].y;
-        
+
         float x2, y2;
-        
+
         GenericTransformPoint(t1, x, y, x2, y2);
         float err = sqrt((x2-corners2[i].x) * (x2-corners2[i].x) + (y2-corners2[i].y) * (y2-corners2[i].y));
         //printf("meanCalc x: %f %f      y: %f %f      err: %f\n", x, corners1[i].x, y, corners1[i].y, err);
-        
+
         if(err > SVD_PRUNE_MAX_DIST && weights[i] > 0)
         {
             weights[i] = 0;
@@ -50,22 +52,22 @@ Transformation prunedWeightedSvd(vector<Point2f> corners1, vector<Point2f> corne
 Transformation prunedNonWeightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, int length){
     vector<float> weights(length);
     fill(weights.begin(), weights.end(), 1.0);
-    
+
     return prunedWeightedSvd(corners1, corners2, length, weights);
 }
 
 Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, int length, vector<float> weights){
     arma::fvec weightsArmaVec(length);
-    
+
     float mean1x = 0., mean1y = 0., mean2x = 0., mean2y = 0., weightsSum = 0.;
-                
+
     for(int i=0;i<length;i++)
     {
         mean1x += corners1[i].x * weights[i];
         mean1y += corners1[i].y * weights[i];
         mean2x += corners2[i].x * weights[i];
         mean2y += corners2[i].y * weights[i];
-        
+
         weightsSum += weights[i];
         weightsArmaVec[i] = weights[i];
     }
@@ -75,7 +77,7 @@ Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, i
         Transformation tr = {0, 0, 0, 0, 0, 1, 0};
         return tr;
     }
-    
+
     mean1x /= weightsSum;
     mean1y /= weightsSum;
     mean2x /= weightsSum;
@@ -83,7 +85,7 @@ Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, i
 
     arma::fmat A(length, 2);
     arma::fmat B(length, 2);
-    
+
     for(int i=0;i<length;i++)
     {
         A(i, 0) = corners1[i].x - mean1x;
@@ -91,27 +93,27 @@ Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, i
         B(i, 0) = corners2[i].x - mean2x;
         B(i, 1) = corners2[i].y - mean2y;
     }
-    
+
     arma::fmat W = arma::diagmat(weightsArmaVec);
     arma::fmat H = A.t() * W * B;
-    
+
     arma::fmat U;
     arma::fvec S;
     arma::fmat V;
-    
+
     arma::svd(U, S, V, H);
     arma::fmat R = V.t() * U.t();
-    
+
     arma::fvec centroidA(2);
     centroidA(0) = mean2x;
     centroidA(1) = mean2y;
-    
+
     arma::fvec centroidB(2);
     centroidB(0) = mean1x;
     centroidB(1) = mean1y;
-    
+
     arma::fvec t = centroidB - R*centroidA;
-    
+
     Transformation trans;
     trans.rotation = asin(R(1,0));
     trans.cos = R(0,0);
@@ -120,22 +122,22 @@ Transformation weightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, i
     trans.uy1 = mean1y;
     trans.ux2 = mean2x;
     trans.uy2 = mean2y;
-    
-    return trans;   
+
+    return trans;
 }
 
 Transformation nonWeightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, int length){
-	vector<float> weights(length);
+    vector<float> weights(length);
     fill(weights.begin(), weights.end(), 1.0);
-    
+
     return weightedSvd(corners1, corners2, length, weights);
 }
 
 vector<float> getDensityWeights(vector<float> dxs, vector<float> dys, int length){
     int k = 20;
-    
+
     vector<float> weights;
-    
+
     for(int i=0;i<length;i++)
     {
         vector<float> distances;
@@ -145,18 +147,18 @@ vector<float> getDensityWeights(vector<float> dxs, vector<float> dys, int length
             {
                 float dist = fabs(dxs[i] - dxs[j]) + fabs(dys[i] - dys[j]);
                 distances.push_back(dist);
-                
+
             }
         }
-        
+
         std::sort(distances.begin(), distances.end());
-            
+
         float totalDistance = 0.;
         for(int m=0;m<k;m++)
         {
             totalDistance += distances[m];
         }
-        
+
         float weight = 1.0 / (totalDistance + 0.001);
         if(weight > 1000000){
             for(int j=0;j<50;j++)
@@ -178,13 +180,13 @@ vector<float> getDensityWeights(vector<float> dxs, vector<float> dys, int length
 Transformation densityWeightedSvd(vector<Point2f> corners1, vector<Point2f> corners2, int length){
     vector<float> dxs;
     vector<float> dys;
-    
+
     for(int i=0;i<length;i++)
     {
         dxs.push_back(corners1[i].x - corners2[i].x);
         dys.push_back(corners1[i].y - corners2[i].y);
     }
-    
+
     vector<float> weights = getDensityWeights(dxs, dys, length);
 
     Transformation result = weightedSvd(corners1, corners2, length, weights);
@@ -236,7 +238,7 @@ Transformation RansacNonWeightedSvd(vector<Point2f> corners1, vector<Point2f> co
 
         set<int> indeces = randomPointSample(corners1, corners2, sample1, sample2, length, pointsPerIteration);
         if(indeces.size() == 0){
-			Transformation tr = {0, 0, 0, 0, 0, 1, 0};
+            Transformation tr = {0, 0, 0, 0, 0, 1, 0};
             return tr;   //empty transformation
         }
 
@@ -436,7 +438,7 @@ void newtonIteration2Weighted(float &t0, float &t1, float &r, float w,  vector<P
         s13 = s7*wInv;
         /*
         //printf("s: %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n", s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13);
-        printf("s7: %f   j22 diff: %f\n", s7, weight * (s4*s4 - s4*s1 + s6*s6 - s6*s5 - 2.F*s8*s8*wInv)*s13); 
+        printf("s7: %f   j22 diff: %f\n", s7, weight * (s4*s4 - s4*s1 + s6*s6 - s6*s5 - 2.F*s8*s8*wInv)*s13);
         printf("s13: %f   weight: %f\n", s13, weight);
         printf("%f %f %f %f %f\n", s4*s4, s4*s1, s6*s6, s6*s5, 2.F*s8*s8*wInv);
         printf("s8: %f\n", s8);
@@ -457,7 +459,7 @@ void newtonIteration2Weighted(float &t0, float &t1, float &r, float w,  vector<P
         j22 += (s4*s4 - s4*s1 + s6*s6 - s6*s5 - 2.F*s8*s8*wInv)*s13;
         //printf("%f   ", j22);
         */
-        
+
         f0 += weight * (-t0 - s9 + x2 + s12)*s3;
         f1 += weight * (-t1 - s11 - s10 + y2)*s3;
         f2 += weight * (-(-s11 - s10)*s5 - (s9 - s12)*s1)*s3;
@@ -468,7 +470,7 @@ void newtonIteration2Weighted(float &t0, float &t1, float &r, float w,  vector<P
         j11 += weight * (1 - 2.F*s1*s1*wInv)*s13;
         j12 += weight * (s9 - s12 + 2.F*s8*s1*wInv)*s13;
         j22 += weight * (s4*s4 - s4*s1 + s6*s6 - s6*s5 - 2.F*s8*s8*wInv)*s13;
-        
+
     }
 
     j01 *= 2.F;
@@ -494,10 +496,10 @@ void newtonIteration2Weighted(float &t0, float &t1, float &r, float w,  vector<P
 }
 
 Transformation WelschFit(vector<Point2f> corners1, vector<Point2f> corners2, int length){
-    
+
     vector<float> weights(length);
     fill(weights.begin(), weights.end(), 1.0F);
-    
+
     return WelschFitWeighted(corners1, corners2, length, weights);
 }
 
@@ -508,15 +510,16 @@ Transformation WelschFitWeighted(vector<Point2f> corners1, vector<Point2f> corne
         float startT0 = start.ux2 - start.cos * start.ux1 + start.sin * start.uy1;
         float startT1 = start.uy2 - start.sin * start.ux1 - start.cos * start.uy1;
         float startR = start.rotation;
-      
+
       float t0 = startT0, t1 = startT1, r = startR;
 
     for(int i=0;i<NUM_STEPS;i++){
         float w = pow(10, log10(START_W) + ((float)i / ((float)NUM_STEPS-1)) * (log10(END_W) - log10(START_W)));
         newtonIteration2Weighted(t0, t1, r, w, corners1, corners2, weights, length);
 
-        if(fabs(t0 - startT0) > NEWTON_STABILITY_LIMIT || fabs(t1 - startT1) > NEWTON_STABILITY_LIMIT || fabs(r - startR) > NEWTON_STABILITY_LIMIT_ROTATION){
-            printf("WARNING: newton's method seems to have gone unstable\n");
+        if(fabs(t0 - startT0) > NEWTON_STABILITY_LIMIT || fabs(t1 - startT1) > NEWTON_STABILITY_LIMIT || fabs(r - startR) > NEWTON_STABILITY_LIMIT_ROTATION)
+        {
+            if(args.warnings) printf("WARNING: newton's method seems to have gone unstable\n");
             t0 = startT0;
             t1 = startT1;
             r = startR;

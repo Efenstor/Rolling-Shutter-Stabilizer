@@ -735,7 +735,7 @@ static struct argp_option options[] = {
     {"codec",       'c',    "name",             0, "Output codec. Default=" FOURCC "/" CODEC, 1},
     {"codecb",      'b',    "-1..1000",         0, "Encoding bitrate (Mbps)", 1},
     {"codecq",      'q',    "-1..100",          0, "Encoding quality factor (quantizer)", 1},
-    {"method",      'm',    "1-2",              0, "Processing method (see below). Default=" METHOD_S, 2},
+    {"method",      'm',    "1-4",              0, "Processing method (see below). Default=" METHOD_S, 2},
     {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 2},
     {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 3},
     {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 3},
@@ -758,7 +758,9 @@ static struct argp_option options[] = {
     {"test",        502,    0,                  0, "Test mode (show corners, etc.)", 7},
     {0,             0,      0,                  OPTION_DOC, "Processing methods:\n"
         "  1 = JelloComplex2\n"
-        "  2 = JelloComplex1", 0},
+        "  2 = JelloComplex1\n"
+        "  3 = JelloTransform2\n"
+        "  4 = JelloTransform1", 0},
     {0, 0, 0, 0, 0, 0}
 };
 
@@ -805,8 +807,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'm':
             // Method
-            if(checkNumberArg(arg, 1, 2, false)) {
-                printf("Method should be a number from 1 to 2.\n");
+            if(checkNumberArg(arg, 1, 4, false)) {
+                printf("Method should be a number from 1 to 4.\n");
                 exit(1);
             }
             args->method = atoi(arg);
@@ -1091,15 +1093,17 @@ int main(int argc, char* argv[])
             ets = evalTransformStream<JelloComplex1>;
             break;
 
-        /*case 3:
-            evalTransform<JelloTransform2>(args.inFileName, args.outFileName);
+        case 3:
+            printf("Using method JelloTransform2\n");
+            ets = evalTransformStream<JelloTransform2>;
             break;
 
         case 4:
-            evalTransform<JelloTransform1>(args.inFileName, args.outFileName);
+            printf("Using method JelloTransform1\n");
+            ets = evalTransformStream<JelloTransform1>;
             break;
 
-        case 5:
+        /*case 5:
             evalTransform<FullFrameTransform2>(args.inFileName, args.outFileName);
             break;
 
