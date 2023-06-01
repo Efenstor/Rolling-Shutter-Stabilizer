@@ -23,7 +23,6 @@
 using namespace std;
 using namespace cv;
 
-extern bool gWarnings;
 extern int *finalStageCounts;
 
 void GenericTransformPoint(Transformation trans, float x, float y, float &x2, float &y2);
