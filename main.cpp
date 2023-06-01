@@ -181,7 +181,7 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
     // Create output file
     VideoWriter outputVideo;
     Size size(width, height);
-    if(args.encBitrate>=0 || args.encQuality>=0)
+    if(args.encBitrate>-2 || args.encQuality>-2)
     {
         // GStreamer
         printf("Using GStreamer OpenCV encoding backend\n");
@@ -1050,7 +1050,7 @@ int main(int argc, char* argv[])
     if(argp_parse(&argp, argc, argv, 0, 0, &args)) return 1;
 
     // fourCC
-    if(args.encQuality<1 && args.encBitrate<1 && strlen(args.codec)<=4) {
+    if(args.encQuality<1 && args.encBitrate<1 && (!args.codec || strlen(args.codec)<=4)) {
         if(args.codec)
         {
             // Custom fourcc

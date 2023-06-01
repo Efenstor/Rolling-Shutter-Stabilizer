@@ -33,4 +33,10 @@ Run *rsvs -h* for full help.
 
 ### Notes:
 
-By default OpenCV does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value. Therefore, if you set the quality (-q) or bitrate (-b) parameters then GStreamer will be attempted to be used instead of the default built-in OpenCV encoder. The output picture produced in this case may suffer from slight imperfections, such as oversaturation, the solution to which is yet to be found.
+Default encoder is H264. OpenCV 4.5 does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value (~20 Mbps for 4K H264). Therefore, if you set the quality (*-q*) or bitrate (*-b*) parameters then the GStreamer backend will be used instead of the default (if OpenCV was compiled with the GStreamer support). The output picture produced in this case may suffer from some imperfections, such as oversaturation - the solution to which is yet to be found.
+
+To specify the encoder (*-c*) you need either to specify its FOURCC code (the built-in OpenCV encoder will be used in this case) or name of a GStreamer encoder plugin. In the latter case you have to specify either quality (*-q*) or bitrate (*-b*) parameters. If you specify *-q* or *-b* without *-c* then the default GStreamer encoder will be used (x264enc). If a GStreamer encoder wants neither quality or bitrate specified, just set any of these parameters to -1 (e.g. *-b-1* or *-q-1*).
+
+The list of FOURCC codes: https://www.free-codecs.com/guides/fourcc.htm
+
+The list of GStreamer plugins: https://gstreamer.freedesktop.org/documentation/plugins_doc.html
