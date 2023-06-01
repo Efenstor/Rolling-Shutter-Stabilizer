@@ -267,9 +267,13 @@ void evalTransformStream(char *inFileName, char *outFileName, bool prePass)
                     int length = GetPointsToTrack(greyInput[0], greyInput[1], corners1, corners2);
                     for(int i=0;i<length;i++)
                     {
-                        line(frame, corners1[i], corners2[i], Scalar(255, 255, 255), 1);
-                        circle(frame, corners1[i], testMarkerSize, Scalar(0, 0, 0), 1);
-                        circle(frame, corners1[i], testMarkerSize-1, Scalar(255, 255, 255), FILLED);
+                        // Show only corners having some motion
+                        if(corners1[i] != corners2[i])
+                        {
+                            line(frame, corners1[i], corners2[i], Scalar(255, 255, 255), 1);
+                            circle(frame, corners1[i], testMarkerSize, Scalar(0, 0, 0), 1);
+                            circle(frame, corners1[i], testMarkerSize-1, Scalar(255, 255, 255), FILLED);
+                        }
                     }
                     outputVideo.write(frame);
                 } else {
