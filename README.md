@@ -39,11 +39,13 @@ Run *rsvs -h* for full help.
 * 4 = JelloTransform1
 * 5 = FullFrameTransform2
 
-Generally 1 is the most advanced and 5 is the simplest. "Jello" methods work best for hand-held scenes shot from a static point of view. Scenes with complex parallax movements or lots of monotonic textures, such as sky, may not be fixable with any of the advanced methods, in this case you have to resort to *FullFrameTransform2*.
+Generally 1 is the most advanced and 5 is the simplest. "Jello" methods work best for hand-held scenes shot from a static point of view. Scenes with complex parallax movements or lots of monotonic textures, such as sky, may not be fixable with any of the advanced methods, in this case you have to resort to *FullFrameTransform2*. Also try playing with the *-r* (*-\-errthr*) parameter, set it to something from .01 to .1.
 
-### Notes:
+For adjusting any parameters the test mode (*-\-test*) may be very helpful: it does not process the image but shows the motion vectors detected instead.
 
-Default encoder is H264. OpenCV 4.5 does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value (~20 Mbps for 4K H264). Therefore, if you set the quality (*-q*) or bitrate (*-b*) parameters then the GStreamer backend will be used instead of the default (if OpenCV was compiled with the GStreamer support). The output picture produced in this case may suffer from some imperfections, such as oversaturation - the solution to which is yet to be found.
+### Output codec:
+
+The default output codec is H264. OpenCV 4.5 does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value (~20 Mbps for 4K H264). Therefore, if you set the quality (*-q*) or bitrate (*-b*) parameters then the GStreamer backend will be used instead of the default (if OpenCV was compiled with the GStreamer support). The output picture produced in this case may suffer from some imperfections, such as oversaturation - the solution to which is yet to be found.
 
 To specify the encoder (*-c*) you need either to specify its FOURCC code (the built-in OpenCV encoder will be used in this case) or name of a GStreamer encoder plugin. In the latter case you have to specify either quality (*-q*) or bitrate (*-b*) parameters. If you specify *-q* or *-b* without *-c* then the default GStreamer encoder will be used (x264enc). If a GStreamer encoder wants neither quality or bitrate specified, just set any of these parameters to -1 (e.g. *-b-1* or *-q-1*).
 
