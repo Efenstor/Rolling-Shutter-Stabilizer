@@ -188,9 +188,8 @@ vector<Point2f> extractCornersToTrack(Mat img){
 
 void extractCornersToTrackThread(Mat img, int numCorners, vector<Point2f> &corners, threadParams tExtent)
 {
-    int nc = numCorners / pow(min(args.cornerCols, args.cornerRows), 2);
+    int nc = numCorners / (args.cornerCols * args.cornerRows);
     if(nc<1) nc = 1;
-    //printf("nc=%i\n", nc);
 
     for(int col = tExtent.from; col<tExtent.to; col++)
     {
