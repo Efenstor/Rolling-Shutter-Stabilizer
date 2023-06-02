@@ -86,8 +86,8 @@ void JelloTransform1::CalcJelloTransform(Mat img1, Mat img2){
     feature_errors.reserve(maxCorners);
 
     calcOpticalFlowPyrLK( croppedImg1, croppedImg2, corners1, corners2, features_found, feature_errors ,
-        Size( win_size, win_size ), 5,
-         cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.3 ), 0 );
+        Size( args.winSize, args.winSize ), args.maxLevel,
+        TermCriteria( TermCriteria::COUNT+TermCriteria::EPS, args.iter, args.epsilon ), 0, args.eigThr );
 
     #ifdef SHFITS_FILENAME
         char outputFilename[100];

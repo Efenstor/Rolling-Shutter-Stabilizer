@@ -411,11 +411,11 @@ static struct argp_option options[] = {
     {"codec",       'c',    "name",             0, "Output codec. Default=" FOURCC "/" CODEC, 1},
     {"codecb",      'b',    "-1..1000",         0, "Encoding bitrate (Mbps)", 1},
     {"codecq",      'q',    "-1..100",          0, "Encoding quality factor (quantizer)", 1},
-    {"method",      'm',    "1-4",              0, "Processing method (see below). Default=" METHOD_S, 2},
+    {"method",      'm',    "1-5",              0, "Processing method (see below). Default=" METHOD_S, 2},
     {"2pass",       '2',    0,                  0, "2-pass mode (fixed crop)", 2},
-    {"djdshift",    's',    "float 0..1",       0, "Dynamic jello decay max shift. Default=" DJD_SHIFT_S, 3},
-    {"djdlinear",   'e',    ".001..100",        0, "Dynamic jello decay linearity. Default=" DJD_LINEAR_S, 3},
-    {"djd",         'd',    "float 0..1",       0, "Dynamic jello decay amount. Default=" DJD_AMOUNT_S, 3},
+    {"sshift",      't',    "float 0..1",       0, "Smoothing max shift. Default=" DJD_SHIFT_S, 3},
+    {"slinear",     'l',    ".001..100",        0, "Smoothing linearity. Default=" DJD_LINEAR_S, 3},
+    {"samount",     's',    "float 0..1",       0, "Smoothing amount. Default=" DJD_AMOUNT_S, 3},
     {"csmooth",     'a',    "float 0..1",       0, "Adaptive crop smoothness. Default=" CROP_SMOOTH_S, 4},
     {"zoom",        'z',    "float .01..100",   0, "Zoom (1 = no zoom). Default=" ZOOM_S, 4},
     {"nocrop",      'n',    0,                  0, "Do not crop output", 4},
@@ -426,7 +426,7 @@ static struct argp_option options[] = {
     {"iter",        606,    "1..1000",          0, "Search iterations. Default=" ITER_S, 5},
     {"stopacc",     607,    "float 0..1",       0, "Max accuracy to stop search. Default=" EPSILON_S, 5},
     {"errthr",      'r',    "float 0..1",       0, "Search errors filter threshold. Default=" EIG_THR_S, 5},
-    {"corners",     602,    "500..100000",      0, "Max number of corners. Default=" NUM_CORNERS_S, 5},
+    {"corners",     602,    "1..100000",        0, "Max number of corners. Default=" NUM_CORNERS_S, 5},
     {"ccols",       600,    "0..1000",          0, "Corner columns. Default=" CORNER_COLS_S, 6},
     {"crows",       601,    "0..1000",          0, "Corner rows. Default=" CORNER_ROWS_S, 6},
     {"threads",     500,    "-1 or >0",         0, "Number of threads to use. Default=-1 (auto)", 7},
@@ -436,7 +436,8 @@ static struct argp_option options[] = {
         "  1 = JelloComplex2\n"
         "  2 = JelloComplex1\n"
         "  3 = JelloTransform2\n"
-        "  4 = JelloTransform1", 0},
+        "  4 = JelloTransform1\n"
+        "  5 = FullFrameTransform2", 0},
     {0, 0, 0, 0, 0, 0}
 };
 
@@ -483,8 +484,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 'm':
             // Method
-            if(checkNumberArg(arg, 1, 4, false)) {
-                printf("Method should be a number from 1 to 4.\n");
+            if(checkNumberArg(arg, 1, 6, false)) {
+                printf("Method should be a number from 1 to 5.\n");
                 exit(1);
             }
             args->method = atoi(arg);
@@ -509,28 +510,28 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             args->cSmooth = atof(arg);
             break;
 
-        case 's':
-            // Dynamic jello decay max shift
+        case 't':
+            // Smoothing max shift
             if(checkNumberArg(arg, 0, 1, true)) {
-                printf("Dynamic jello decay max shift should be a floating-point number from 0 to 1.\n");
+                printf("Smoothing max shift should be a floating-point number from 0 to 1.\n");
                 exit(1);
             }
             args->djdShift = atof(arg);
             break;
 
-        case 'e':
-            // Dynamic jello decay linearity
+        case 'l':
+            // Smoothing linearity
             if(checkNumberArg(arg, .001, 100, true)) {
-                printf("Dynamic jello decay linearity should be a floating-point number from .001 to 100.\n");
+                printf("Smoothing linearity should be a floating-point number from .001 to 100.\n");
                 exit(1);
             }
             args->djdLinear = atof(arg);
             break;
 
-        case 'd':
-            // Dynamic jello decay amount
+        case 's':
+            // Smoothing amount
             if(checkNumberArg(arg, 0, 1, true)) {
-                printf("Dynamic jello decay amount should be a floating-point number from .1 to 100\n");
+                printf("Smoothing amount should be a floating-point number from .1 to 100\n");
                 exit(1);
             }
             args->djdAmount = atof(arg);
@@ -593,8 +594,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
         case 602:
             // Corners
-            if(checkNumberArg(arg, 500, 100000, false)) {
-                printf("Number of corners should be from 500 to 100000.\n");
+            if(checkNumberArg(arg, 1, 100000, false)) {
+                printf("Number of corners should be from 1 to 100000.\n");
                 exit(1);
             }
             args->corners = atoi(arg);
@@ -633,7 +634,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             break;
 
         case 607:
-            // Epsilon
+            // Max accuracy
             if(checkNumberArg(arg, 0, 1, true)) {
                 printf("Max accuracy should be a floating-point number from 0 to 1.\n");
                 exit(1);
@@ -642,9 +643,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
             break;
 
         case 'r':
-            // Eigen threshold
+            // Search errors filter threshold
             if(checkNumberArg(arg, 0, 1, true)) {
-                printf("Eigen threshold should be a floating-point number from 0 to 1.\n");
+                printf("Errors filter threshold should be a floating-point number from 0 to 1.\n");
                 exit(1);
             }
             args->eigThr = atof(arg);
@@ -779,18 +780,15 @@ int main(int argc, char* argv[])
             ets = evalTransformStream<JelloTransform1>;
             break;
 
-        /*case 5:
-            evalTransform<FullFrameTransform2>(args.inFileName, args.outFileName);
+        case 5:
+            printf("Using method FullFrameTransform2\n");
+            ets = evalTransformStream<FullFrameTransform2>;
             break;
 
-        case 6:
-            evalTransform<FullFrameTransform>(args.inFileName, args.outFileName);
-            break;
-
-        case 7:
-            evalTransform<NullTransform>(args.inFileName, args.outFileName);
+        /*case 6:
+            printf("Using method FullFrameTransform1\n");
+            ets = evalTransformStream<FullFrameTransform1>;
             break;*/
-
     }
     if(args.twoPass) {
         args.zoom = 1;

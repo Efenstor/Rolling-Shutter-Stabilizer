@@ -23,21 +23,21 @@
 
 
 class FullFrameTransform : public ITransform {
-	public:
-		Transformation wholeFrameTransform;
-		AbsoluteTransformation absoluteWholeFrameTransform;
+    public:
+        Transformation wholeFrameTransform;
+        AbsoluteTransformation absoluteWholeFrameTransform;
 
-		FullFrameTransform();
+        FullFrameTransform();
 
-		FullFrameTransform(Mat img1, Mat img2, int index0, int index1, bool evalShifts = true);
+        FullFrameTransform(Mat img1, Mat img2, int index0, int index1, bool evalShifts = true);
 
-		void CreateAbsoluteTransform(FullFrameTransform prevTransform);
-		
-		void TransformPoint(float x, float y, float &x2, float &y2);
+        void CreateAbsoluteTransform(FullFrameTransform prevTransform);
 
-		void TransformPointAbs(float x, float y, float &x2, float &y2);
+        void TransformPoint(float x, float y, float &x2, float &y2);
 
-		void getWholeFrameTransform(Mat img1, Mat img2);
+        void TransformPointAbs(float x, float y, float &x2, float &y2);
+
+        void getWholeFrameTransform(Mat img1, Mat img2);
 };
 
 

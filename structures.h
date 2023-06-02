@@ -29,16 +29,6 @@ typedef struct
     float sin;
 } Transformation;
 
-typedef struct
-{
-    float **shiftsX;
-    float **shiftsY;
-    float *params;
-    int width;
-    int height;
-    int numParams;
-} TransformationMem;
-
 /*
 class Transformation{
 public:
@@ -151,5 +141,15 @@ typedef struct
     int from;
     int to;
 } threadParams;
+
+typedef struct
+{
+    float **shiftsX;
+    float **shiftsY;
+    float *params;
+    int width;
+    int height;
+    int numParams;
+} TransformationMem;
 
 #endif

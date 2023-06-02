@@ -23,32 +23,31 @@
 
 
 class FullFrameTransform2 : public ITransform {
-	public:
+    public:
 
+        float ** shiftsX;
+        float ** shiftsY;
 
-		float ** shiftsX;
-		float ** shiftsY;
+        float * params;
 
-		float * params;
+        FullFrameTransform2(TransformationMem *tm);
 
-		FullFrameTransform2();
+        FullFrameTransform2(Mat img1, Mat img2, int index0, int index1, TransformationMem *tm);
 
-		FullFrameTransform2(Mat img1, Mat img2, int index0, int index1, bool evalShifts = true);
+        void CreateAbsoluteTransformThread(TransformationMem *prevMem, TransformationMem *newMem, threadParams tExtent, float decayX, float decayY);
+        void CreateAbsoluteTransform(TransformationMem *prevMem, TransformationMem *newMem);
 
-		void CreateAbsoluteTransform(FullFrameTransform2 prevTransform);
+        void AssignShiftMem(TransformationMem *tm);
 
-		void AllocateShiftMem();
-		
-		void TransformPoint(float x, float y, float &x2, float &y2);
+        void TransformPoint(float x, float y, float &x2, float &y2);
 
-		void TransformPointAbs(float x, float y, float &x2, float &y2);
+        void TransformPointAbs(float x, float y, float &x2, float &y2);
 
-		void getWholeFrameTransform(Mat img1, Mat img2);
+        void getWholeFrameTransform(Mat img1, Mat img2);
 
+        float getFullModelCostWelsch(vector<Point2f> corners1, vector<Point2f> corners2, float* params, float w);
 
-		float getFullModelCostWelsch(vector<Point2f> corners1, vector<Point2f> corners2, float* params, float w);
-
-		void LMIterationWelsch(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates, float &lambda, float w);
+        void LMIterationWelsch(vector<Point2f> corners1, vector<Point2f> corners2, int length, float* params, float* &updates, float &lambda, float w);
 
 };
 

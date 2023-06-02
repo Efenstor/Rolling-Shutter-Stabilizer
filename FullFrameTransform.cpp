@@ -22,58 +22,58 @@
 
 
 FullFrameTransform::FullFrameTransform(){
-	Transformation tr = {0, 0, 0, 0, 0, 1, 0};	//cos term is 1
-	wholeFrameTransform = tr;
-	AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
-	absoluteWholeFrameTransform = at;
+    Transformation tr = {0, 0, 0, 0, 0, 1, 0};  //cos term is 1
+    wholeFrameTransform = tr;
+    AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
+    absoluteWholeFrameTransform = at;
 }
 
 FullFrameTransform::FullFrameTransform(Mat img1, Mat img2, int index0, int index1, bool evalShifts){
-	getWholeFrameTransform(img1, img2);
-	AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
-	absoluteWholeFrameTransform = at;
-	imgBound ib = {0, img1.cols, 0, img1.rows};
-	frameBound = ib;
+    getWholeFrameTransform(img1, img2);
+    AbsoluteTransformation at = {wholeFrameTransform, 0, 0};
+    absoluteWholeFrameTransform = at;
+    imgBound ib = {0, img1.cols, 0, img1.rows};
+    frameBound = ib;
 
-	#ifdef SHFITS_FILENAME
-		if(evalShifts){
-			evalTransforms(index0, index1, (char*)SHFITS_FILENAME);
-		}
-	#endif
+    #ifdef SHFITS_FILENAME
+        if(evalShifts){
+            evalTransforms(index0, index1, (char*)SHFITS_FILENAME);
+        }
+    #endif
 }
 
 void FullFrameTransform::getWholeFrameTransform(Mat img1, Mat img2){
-	FeaturesInfo fi1 = extractFeaturesToTrack(img1);
-	FeaturesInfo fi2 = extractFeaturesToTrack(img2);
+    FeaturesInfo fi1 = extractFeaturesToTrack(img1);
+    FeaturesInfo fi2 = extractFeaturesToTrack(img2);
 
-	int length = max(fi1.features.size(), fi2.features.size());
-	
-	std::vector<uchar> features_found; 
-	features_found.reserve(length);
-	std::vector<float> feature_errors; 
-	feature_errors.reserve(length);
+    int length = max(fi1.features.size(), fi2.features.size());
 
-	calcOpticalFlowPyrLK( fi1.pyramid, fi2.pyramid, fi1.features, fi2.features, features_found, feature_errors ,
-		Size( WIN_SIZE, WIN_SIZE ), 5,
-		 cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 30, 0.01 ), 0 );
+    std::vector<uchar> features_found;
+    features_found.reserve(length);
+    std::vector<float> feature_errors;
+    feature_errors.reserve(length);
 
-	//wholeFrameTransform = densityWeightedSvd(fi1.features, fi2.features, features_found.size());
-	//wholeFrameTransform = prunedNonWeightedSvd(fi1.features, fi2.features, features_found.size());
-	wholeFrameTransform = WelschFit(fi1.features, fi2.features, features_found.size());
-	//wholeFrameTransform = RansacNonWeightedSvd(fi1.features, fi2.features, features_found.size());
-	//wholeFrameTransform = nonWeightedSvd(fi1.features, fi2.features, features_found.size());
+    calcOpticalFlowPyrLK( fi1.pyramid, fi2.pyramid, fi1.features, fi2.features, features_found, feature_errors ,
+        Size( WIN_SIZE, WIN_SIZE ), 5,
+         cvTermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 30, 0.01 ), 0 );
+
+    //wholeFrameTransform = densityWeightedSvd(fi1.features, fi2.features, features_found.size());
+    //wholeFrameTransform = prunedNonWeightedSvd(fi1.features, fi2.features, features_found.size());
+    wholeFrameTransform = WelschFit(fi1.features, fi2.features, features_found.size());
+    //wholeFrameTransform = RansacNonWeightedSvd(fi1.features, fi2.features, features_found.size());
+    //wholeFrameTransform = nonWeightedSvd(fi1.features, fi2.features, features_found.size());
 }
 
 void FullFrameTransform::CreateAbsoluteTransform(FullFrameTransform prevTransform){
-	float ix = prevTransform.absoluteWholeFrameTransform.idx * TRANSLATION_DECAY - prevTransform.wholeFrameTransform.ux1 + prevTransform.wholeFrameTransform.ux2;
-	float iy = prevTransform.absoluteWholeFrameTransform.idy * TRANSLATION_DECAY - prevTransform.wholeFrameTransform.uy1 + prevTransform.wholeFrameTransform.uy2;
-	
-	absoluteWholeFrameTransform.trans = wholeFrameTransform;
-	absoluteWholeFrameTransform.idx = ix;
-	absoluteWholeFrameTransform.idy = iy;
-	absoluteWholeFrameTransform.trans.rotation = prevTransform.absoluteWholeFrameTransform.trans.rotation * ROTATION_DECAY + wholeFrameTransform.rotation;
-	absoluteWholeFrameTransform.trans.cos = cos(absoluteWholeFrameTransform.trans.rotation);
-	absoluteWholeFrameTransform.trans.sin = sin(absoluteWholeFrameTransform.trans.rotation);
+    float ix = prevTransform.absoluteWholeFrameTransform.idx * TRANSLATION_DECAY - prevTransform.wholeFrameTransform.ux1 + prevTransform.wholeFrameTransform.ux2;
+    float iy = prevTransform.absoluteWholeFrameTransform.idy * TRANSLATION_DECAY - prevTransform.wholeFrameTransform.uy1 + prevTransform.wholeFrameTransform.uy2;
+
+    absoluteWholeFrameTransform.trans = wholeFrameTransform;
+    absoluteWholeFrameTransform.idx = ix;
+    absoluteWholeFrameTransform.idy = iy;
+    absoluteWholeFrameTransform.trans.rotation = prevTransform.absoluteWholeFrameTransform.trans.rotation * ROTATION_DECAY + wholeFrameTransform.rotation;
+    absoluteWholeFrameTransform.trans.cos = cos(absoluteWholeFrameTransform.trans.rotation);
+    absoluteWholeFrameTransform.trans.sin = sin(absoluteWholeFrameTransform.trans.rotation);
 }
 
 void FullFrameTransform::TransformPoint(float x, float y, float &x2, float &y2){
@@ -81,5 +81,5 @@ void FullFrameTransform::TransformPoint(float x, float y, float &x2, float &y2){
 }
 
 void FullFrameTransform::TransformPointAbs(float x, float y, float &x2, float &y2){
-	GenericTransformPointAbs(absoluteWholeFrameTransform, x, y, x2, y2);
+    GenericTransformPointAbs(absoluteWholeFrameTransform, x, y, x2, y2);
 }
