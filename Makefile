@@ -4,7 +4,7 @@ HFILES = coreFuncs.h EvalTransformStream.hpp FullFrameTransform.h FullFrameTrans
 
 OFILES = coreFuncs.o FullFrameTransform.o FullFrameTransform2.o ITransform.o JelloComplex1.o JelloComplex2.o jelloTransform1.o jelloTransform2.o nullTransform.o main.o svd.o
 
-CFLAGS = -g -I /usr/include/opencv4 -I /usr/local/include/opencv4 -g -Wall -Wextra -Wpedantic -std=c++17
+CFLAGS = -g -I /usr/include/opencv4 -I /usr/local/include/opencv4 -g -Wall -Wextra -Wpedantic -std=c++17 -O3
 LDFLAGS = -lm -lpthread -lopencv_core -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_features2d -lopencv_ml -lopencv_highgui -lopencv_objdetect -lopencv_imgcodecs -lopencv_videoio -larmadillo
 
 .PHONY: all
