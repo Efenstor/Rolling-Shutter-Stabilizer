@@ -31,6 +31,16 @@ Read more about the problem [here](https://www.gnu.org/licenses/license-list.htm
 
 Run *rsvs -h* for full help.
 
+### Methods (-m):
+
+* 1 = JelloComplex2 (default)
+* 2 = JelloComplex1
+* 3 = JelloTransform2
+* 4 = JelloTransform1
+* 5 = FullFrameTransform2
+
+Generally 1 is the most advanced and 5 is the simplest. "Jello" methods work best for hand-held scenes shot from a static point of view. Scenes with complex parallax movements or lots of monotonic textures, such as sky, may not be fixable with any of the advanced methods, in this case you have to resort to *FullFrameTransform2*.
+
 ### Notes:
 
 Default encoder is H264. OpenCV 4.5 does not allow setting output encoder bitrate or quality, it is hardcoded to some "reasonable" value (~20 Mbps for 4K H264). Therefore, if you set the quality (*-q*) or bitrate (*-b*) parameters then the GStreamer backend will be used instead of the default (if OpenCV was compiled with the GStreamer support). The output picture produced in this case may suffer from some imperfections, such as oversaturation - the solution to which is yet to be found.
