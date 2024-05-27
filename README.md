@@ -1,11 +1,11 @@
-Rolling-Shutter-Video-Stabilization
+Rolling Shutter Video Stabilization
 ===================================
 
-**Work in progress! Use at your own risk.**
+**Eternal alpha version, so be ready for some crashtastic galore.**
 
 ### Summary:
 
-A Linux command line program for stabilizing shaky video clips. Very effectively eliminates the infamous "jello" effect caused by rolling shutter in CMOS sensors. Uses OpenCV for processing but currently all calculations are done in CPU, so don't expect much performance.
+A Linux command line program for stabilizing shaky video clips. Heavily based upon the code by [Nick Stupich](https://github.com/NickStupich). Very effectively eliminates the infamous "jello" effect caused by rolling shutter in CMOS sensors. Uses OpenCV for processing but currently all calculations are done in CPU, so don't expect much performance.
 
 ### Licensing problem:
 
