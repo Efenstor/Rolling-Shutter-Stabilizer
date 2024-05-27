@@ -1,5 +1,5 @@
-Rolling Shutter Video Stabilization
-===================================
+Rolling Shutter Video Stabilizer
+================================
 
 **Eternal alpha version, so be ready for some crashtastic galore.**
 
